@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterKtSt
 // @namespace    _specterKtSt
-// @version      0.1.0
+// @version      0.1.5
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
