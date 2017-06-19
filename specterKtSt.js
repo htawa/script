@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterKtSt
 // @namespace    _specterKtSt
-// @version      0.1.5
+// @version      0.1.1
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -250,7 +250,7 @@ miu$._DATAstate.hentyo = function() {
 	this["毒"] = 0;
 	this["衰"] = 0;
 	this["痺"] = 0;
-	this["魅"] = 0; 
+	this["魅"] = 0;
 	this["呪"] = 0;
 	this["乱"] = 0;
 	this["祝"] = 0;
@@ -438,7 +438,7 @@ miu$._LOGdata.init.prototype.createL = function(elem) {
 		msg = new miu$._GETlog.messageTable(elem, i, reg, tST);
 		result[i] = {"pt": miu$._GETlog.NoP(ch.character), "log": msg.msg};
 	}
-	i = result.findIndex((v) => {return v.pt.some((v) => {return !v});});
+	i = result.findIndex((v) => {return v.pt.some((v) => {return !v;});});
 	if(i > 0) result.splice(i, result.length - i);
 	console.log("戦闘終了");
 	console.log(tST);
@@ -918,7 +918,7 @@ miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, effli
 	list.push(func.sublist(efflist.str));
 	if(efflist.str[5]) list.push(func.sublist(efflist.str[5].split(reg.effect.StatusHS)));
 	((i, prop, e) => {
-		prop = list.find((v) => {return /奪取|強奪/.test(v.prop)});
+		prop = list.find((v) => {return /奪取|強奪/.test(v.prop);});
 		if(prop) prop = prop.prop;
 		e[0] = miu$._HTMLfunc.setInfo(efflist.rlist, tST, target, msglist.sName.user, efflist.response);
 		e[1] = miu$._HTMLfunc.sethpsp(tST, target, msglist.sName.user, prop);
@@ -954,20 +954,20 @@ miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist
 		subkey = efflist.str[1].split(reghentyo.type)[1],
 		add = parseInt(efflist.str[3], 10),
 		prop = efflist.str[4],
-		key = Object.keys(reghentyo.keys).find((v) => { return reghentyo.keys[v].test(efflist.str[2])}),
+		key = Object.keys(reghentyo.keys).find((v) => { return reghentyo.keys[v].test(efflist.str[2]);}),
 		funckey = (key) ? key.match(/防御|深度/) : null;
 	if(funckey !== null) {
 		prop = ((fk, pr) => {
 			var func = {};
 			func["防御"] = (p) => {
 				var reg = {"追加": /得た/, "減少": /減/};
-				p = Object.keys(reg).find((v) => { return reg[v].test(p)});
+				p = Object.keys(reg).find((v) => { return reg[v].test(p);});
 				tST[efflist.target][key][subkey] = miu$._DATAstate._update(tST[efflist.target][key][subkey], (p === "追加") ? add : -add);
 				return p;
 			};
 			func["深度"] = (p) => {
 				var reg = {"追加": /.*追加/, "軽減": /減/, "抵抗": /抵抗/, "変調防御": /防御/, "奪取": /奪取/};
-				p = Object.keys(reg).find((v) => { return reg[v].test(p)});
+				p = Object.keys(reg).find((v) => { return reg[v].test(p);});
 				if(p === "抵抗") {
 					add = 0;
 					return p;
@@ -1227,8 +1227,8 @@ miu$._HTMLfunc.setInfo = function(logdata, tST, target, user, response) {
 };
 
 miu$._HTMLfunc.getInfo = function(logdata, information_Window, response) {
-	var info_box = document.getElementById(((v) => {return v})(Scriptname + "_information_window_box")),
-		close = info_box.getElementsByClassName(((v) => {return v})(Scriptname + "_close"))[0],
+	var info_box = document.getElementById(((v) => {return v;})(Scriptname + "_information_window_box")),
+		close = info_box.getElementsByClassName(((v) => {return v;})(Scriptname + "_close"))[0],
 		main_box = document.getElementById('information_window_main'),
 		information_window_sub = document.getElementById(((r) => {return r;})(Scriptname + "_information_window_sub")),
 		information_window_info = document.getElementById('information_window_info'),
@@ -1249,7 +1249,7 @@ miu$._HTMLfunc.getInfo = function(logdata, information_Window, response) {
 		t += "<span class=\"_info_box_skill_text\">" + logdata[0].type + "</span><span class=\"_info_box_skill_text\">" + logdata[0].user + "</span></div>";
 		t += "<div><span class=\"_info_box_skill_text\">" + ((sp) => {return (logdata[0].type === "A") ? (sp) ? -sp * (sp + 1) / 2 * 10 : "-" : "-";})(spec.length) + "/sp</span>";
 		t += "<span class=\"_info_box_skill_text\">" + ((t) => {
-			spec.forEach((v,i) => {t += (() => {return (i > 0) ? "→" : "◇"})() + "</span><span" + (() => {return (i === res) ? " class=\"" + Scriptname + "_bold\"" : ""})() + ">" + logdata[v].spec + "</span><span>";});
+			spec.forEach((v,i) => {t += (() => {return (i > 0) ? "→" : "◇";})() + "</span><span" + (() => {return (i === res) ? " class=\"" + Scriptname + "_bold\"" : "";})() + ">" + logdata[v].spec + "</span><span>";});
 			return t;
 		})("") + "</span></div>";
 		return t;
@@ -1518,7 +1518,7 @@ miu$._HTMLfunc.menuTab = function(ev, open_Button, data) {
 		view[k].classList.add(Scriptname + "_view");
 		ev.main_area.appendChild(view[k]);
 		onlist[k] = 0;
-		miu$._HTMLfunc.view[k](data, k, onlist, view[k])
+		miu$._HTMLfunc.view[k](data, k, onlist, view[k]);
 	});
 	m.forEach((k) => {
 		menu[k] = document.createElement('span');
@@ -1770,7 +1770,7 @@ miu$._HTMLfunc.stylesheet = function() {
 			})("", 1, arguments.length);
 			return a + " {\n" + text + "}\n";
 		},
-		tx = function() {return Array.from(arguments).map((v) => {return v + ";";})},
+		tx = function() {return Array.from(arguments).map((v) => {return v + ";";});},
 		cl = ".", id = "#",
 		font = tx("font-size: 10px", "font-weight: normal", "font-style: normal", "color: rgb(220,220,220)"),
 		disp = {"b": tx("display: block"), "n": tx("display: none"), "ib": tx("display: inline-block")},
