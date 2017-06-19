@@ -1,3 +1,16 @@
+// ==UserScript==
+// @name         specterKtSt
+// @namespace    _specterKtSt
+// @version      0.1.0
+// @description  ktstのログに色々書き加えていくスクリプト。
+// @author       ssz
+// @match        http://lisge.com/kk/k/*
+// @match        http://lisge.com/kk/tb/*
+// @match        http://lisge.com/kk/br/*
+// @updataURL    https://raw.githubusercontent.com/htawa/script/master/specterKtSt.js
+// @grant        none
+// ==/UserScript==
+
 (function(){
 "use strict";
 var miu$ = {};
@@ -7,7 +20,7 @@ const Scriptname = "specterX",
 	Autoload = false,
 	Bit = 32,
 	//css
-	zIndex = 100,
+	zIndex = 156,
 	Borderline = "solid 1px rgb(0,0,0)";
 console.log(Errtitle);
 
@@ -1495,8 +1508,8 @@ miu$._HTMLfunc.input = function() {
 };
 
 miu$._HTMLfunc.menuTab = function(ev, open_Button, data) {
-	var v = ["view_status", "view_takeLog", "view_skillLog", "view_version"],
-		m = ["ステータス", "ログ", "スキル", "使い方"],
+	var v = ["view_status", "view_takeLog", "view_skillLog"],
+		m = ["ステータス", "ログ", "スキル"],
 		view = {}, menu = {}, onlist = {}, func = {},
 		menuOn = 0;
 	v.forEach((k) => {
@@ -1744,59 +1757,6 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 //////view_skillLog///////////////////////////////////////////
 miu$._HTMLfunc.view.view_skillLog = function(data, key, onlist, viewElem) {
 	console.log(key);
-};
-
-//////view_version///////////////////////////////////////////
-miu$._HTMLfunc.view.view_version = function(data, key, onlist, viewElem) {
-	console.log(key);
-	var e = {"m": document.createElement('div'), "h": {}, "t": {}},
-		head = ["Noto", "ステータス", "ログ", "スキル"/*, "Version"*/];
-	viewElem.appendChild(e.m);
-	e.m.id = Scriptname + "_v_ver_back";
-	head.forEach((v) => {
-		e.h[v] = document.createElement('div');
-		e.t[v] = document.createElement('div');
-		e.h[v].textContent = v + " :";
-		e.h[v].classList.add(Scriptname + "_v_ver_head");
-		e.t[v].classList.add(Scriptname + "_v_ver_text");
-		e.m.appendChild(e.h[v]);
-		e.m.appendChild(e.t[v]);
-	});
-	e.t[head[0]].innerHTML = ((t) => {
-		t = Scriptname + " " + Version + "<BR>"
-		+ "<BR>"
-		;
-		return t;
-	})("");
-	e.t[head[1]].innerHTML = ((t) => {
-		t = "ステータスを指定できます。<BR>"
-		+ "getを押すと現在のステータスを読み込みます。<BR>"
-		+ "completeを押すとで再設定します。<BR>"
-		+ "ステータスの計算は天呼のままなので使えません。"
-		+ "<BR>"
-		;
-		return t;
-	})("");
-	e.t[head[2]].innerHTML = ((t) => {
-		t = "未実装<BR>"
-		+ "<BR>"
-		;
-		return t;
-	})("");
-	e.t[head[3]].innerHTML = ((t) => {
-		t = "未実装<BR>"
-		+ "<BR>"
-		;
-		return t;
-	})("");
-	/*
-	e.t[head[4]].innerHTML = ((t) => {
-		t = "ver0.5 : 天呼のスクリプトをコピー。<BR>"
-		+ "<BR>"
-		;
-		return t;
-	})("");
-	*/
 };
 
 //////stylesheet//////////////////////////////////////////////
