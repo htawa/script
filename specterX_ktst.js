@@ -7,8 +7,8 @@
 // @match        http://lisge.com/kk/k/*
 // @match        http://lisge.com/kk/tb/*
 // @match        http://lisge.com/kk/br/*
-// @updataURL    https://raw.githubusercontent.com/htawa/script/master/specterKtSt.js
-// @downloadURL  https://raw.githubusercontent.com/htawa/script/master/specterKtSt.js
+// @updataURL    https://raw.githubusercontent.com/htawa/script/master/specterX_ktst.js
+// @downloadURL  https://raw.githubusercontent.com/htawa/script/master/specterX_ktst.js
 // @grant        none
 // ==/UserScript==
 
