@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.1.2
+// @version      0.1.3
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -1039,7 +1039,7 @@ miu$._GETlog.messageTable.prototype.yhDam = function(reg, msglist, tST, efflist)
 };
 
 miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist) {
-	var reghentyo = new miu$._REG.hentyo,
+	var reghentyo = new miu$._REG.hentyo(),
 		subkey = efflist.str[1].split(reghentyo.type)[1],
 		add = parseInt(efflist.str[3], 10),
 		prop = efflist.str[4],
@@ -1164,7 +1164,7 @@ miu$._GETlog.messageTable.prototype.P = function(reg, msglist, tST, x, response)
 		r = strP[2].split(r);
 		strP[2] = r[0];
 		strP[3] = r[1];
-	};
+	}
 	msglist.sName = {"user": strP[1], "id": strP[2], "slv": strP[3]};
 	return {"user": msglist.sName.user, "id": msglist.sName.id, "slv": parseInt(msglist.sName.slv, 10), "type": "P"};
 };
@@ -1962,7 +1962,6 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	e.select_right.appendChild(e.result_area);
 	e.select_getter.appendChild(result.select_list);
 	e.select_getter.appendChild(result.select_button);
-	
 	(() => {
 	//csv
 		var els = {"syntax": "input", "rText": "textarea", "rCopy": "input", "manual": "div"};
@@ -1975,7 +1974,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 		els.syntax.type = "text";
 		els.syntax.placeholder = " syntax";
 		els.syntax.spellcheck = false;
-		els.rCopy.type = "button"
+		els.rCopy.type = "button";
 		els.rCopy.value = "copy";
 		els.rText.readOnly = true;
 		els.rText.placeholder = " csv";
@@ -2314,7 +2313,7 @@ miu$._HTMLfunc.stylesheet = function() {
 		)
 		////
 		+ css(cl + Scriptname + "_view", disp.n)
-	///////////////////////	
+	///////////////////////
 		+ css(id + "view_status", absolute)
 		+ css(id + "view_takeLog", absolute)
 		+ css(id + "view_skillLog", absolute)
@@ -2533,7 +2532,7 @@ miu$._HTMLfunc.stylesheet = function() {
 			disp.b
 		)
 		+ css(cl + "v_manual div",
-			tx("padding: 10px 10px 0 10px"),
+			tx("padding: 10px 10px 0 10px")
 		)
 		+ css(cl + "v_manual table",
 			font,
