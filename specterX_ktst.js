@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.1.4
+// @version      0.1.5
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -2092,17 +2092,18 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 					func.syntaxadd = (v) => {res += v + "\n";};
 					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
 					func.logtext = (o) => {func.syntaxadd(Object.keys(o).map((k) => {return (o[k] === true) ? undefined : o[k];}).join(","));};
-					func.logd = (logdata, obj) => {
+					func.logd = (logdata, obj, searchid) => {
 						logdata.forEach((v,bool,arr) => {
 							if(checkObject(v, "Object")) {
 								if(v.id || v.spec) {
 									if(v.id) {
 										func.addString(obj, "sid,slv,stype,snA", v.id, v.slv, v.type, v.nA);
+										searchid = v.id;
 									} else {
 										func.addString(obj, "sspec", v.spec);
 									}
 								} else {
-									if(reg.test(obj.sid)) {
+									if(reg.test(searchid)) {
 										bool = 1;
 										arr = {};
 										Object.keys(keys).forEach((k) => {
@@ -2134,13 +2135,11 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 									}
 								}
 							} else {
-								func.logd(v, JSON.parse(JSON.stringify(obj)));
+								func.logd(v, JSON.parse(JSON.stringify(obj)), searchid);
 							}
 						});
 					};
 					syn.split(/,/).forEach((v,i,a) => {
-						console.log(v,i,a);
-						console.log(syntaxText);
 						if(syntaxText[v]) {
 							obj[v] = true;
 						} else {
@@ -2154,7 +2153,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 						data.log.forEach((v,i) => {
 							obj = JSON.parse(JSON.stringify(syn));
 							func.addString(obj, "sturn,upt,tpt", i, v.pt[0], v.pt[1]);
-							func.logd(v.log, JSON.parse(JSON.stringify(obj)));
+							func.logd(v.log, JSON.parse(JSON.stringify(obj)), "");
 						});
 					}
 					return res;
