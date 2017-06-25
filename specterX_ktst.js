@@ -1832,7 +1832,7 @@ miu$._HTMLfunc.view.view_status_character = function(data, key, onlist, viewElem
 //////view_takeLog////////////////////////////////////////////
 miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	console.log(key);
-	var e = {"select_area": "div", "logtop": "div", "select_main": "div", "checkSelect": "div", "select_right": "div", "select_getter": "div", "select_result": "div", "result_area": "div"},
+	var e = {"select_area": "div", "logtop": "div", "select_main": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "select_getter": "div", "select_result": "div", "result_area": "div"},
 		select = {"target": "", "user": "", "key": "", "subkey": "", "prop": "", "other": ""},
 		result = {"select_list": "select", "select_button": "button"},
 		option = {"csv": 0, "timeTable": 1},
@@ -1877,6 +1877,10 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 			});
 		}, false);
 	});
+	e.checkSelect.appendChild(e.search_box);
+	e.search_box.type = "search";
+	e.search_box.placeholder = "スキル検索";
+	e.search_box.spellcheck = false;
 	Object.keys(select).forEach((v) => {
 		var el = {"logGetSelect": "div", "logGetTitle": "div", "hide": "div"},
 			span = {"icon": "▶", "name": ("." + v)};
@@ -1971,7 +1975,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 			els[v] = d;
 			rElem.csv.appendChild(d);
 		});
-		els.syntax.type = "text";
+		els.syntax.type = "search";
 		els.syntax.placeholder = " syntax";
 		els.syntax.spellcheck = false;
 		els.rCopy.type = "button";
@@ -2072,7 +2076,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 			t.table.appendChild(t.tbody);
 			els.manual.innerHTML = "<div>syntax<br>[ t~ : target ] , [ u~ : user ] , [ s~ : skill ]</div>";
 			els.manual.appendChild(t.table);
-			r_func["csv"] = () => {
+			r_func["csv"] = (reg) => {
 				var keys = {}, func = {};
 				Object.keys(select).forEach((v) => {
 					keys[v] = [];
@@ -2098,33 +2102,35 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 										func.addString(obj, "sspec", v.spec);
 									}
 								} else {
-									bool = 1;
-									arr = {};
-									Object.keys(keys).forEach((k) => {
-										bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
-										arr[k] = flag[flag.checkkey(k)][flag.getIndex(v[k])][0];
-									});
-									if(bool) {
-										["target", "user"].forEach((t) => {
-											if(arr[t]) {
-												arr[t.substring(0, 1) + "Eno"] = arr[t].split(/\s:\s/)[0];
-												arr[t] = arr[t].split(/\s:\s/)[1];
-											}
+									if(reg.test(obj.sid)) {
+										bool = 1;
+										arr = {};
+										Object.keys(keys).forEach((k) => {
+											bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
+											arr[k] = flag[flag.checkkey(k)][flag.getIndex(v[k])][0];
 										});
-										((obj) => {
-											func.addString(obj, "tEno,uEno,tchar,uchar,skey,ssubkey,sprop,sother,sadd", arr.tEno, arr.uEno, arr.target, arr.user, arr.key, arr.subkey, arr.prop, arr.other, v.add);
-											if(v.info) {
-												func.addString(obj, "scri", v.info.critical);
-												["target", "user"].forEach((t) => {
-													var a = v.info[t + "Status"], n = t.substring(0, 1);
-													func.addString(obj, `${n}yDam,${n}hDam,${n}yHeal,${n}hHeal,${n}Rnzk,${n}Imp,${n}Retu,${n}Syat`, a.yDam, a.hDam, a.yHeal, a.hHeal, a["連続"], a.Impact, a["隊列"], a["射程"]);
-													((v) => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
-													((v) => {func.addString(obj, `${n}stAT,${n}stMAT,${n}stDF,${n}stMDF,${n}stEVA,${n}stMEVA,${n}stHIT,${n}stMHIT,${n}stSPD,${n}stCRI,${n}stHEAL,${n}stHP,${n}stMHP,${n}stSP,${n}stMSP`, v.AT, v.MAT, v.DF, v.MDF, v.EVA, v.MEVA, v.HIT, v.MHIT, v.SPD, v.CRI, v.HEAL, v.HP, v.MHP, v.SP, v.MSP);})(a.state);
-													((v) => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"]);})(a["変調深度"]);
-												});
-											}
-											func.logtext(obj);
-										})(JSON.parse(JSON.stringify(obj)));
+										if(bool) {
+											["target", "user"].forEach((t) => {
+												if(arr[t]) {
+													arr[t.substring(0, 1) + "Eno"] = arr[t].split(/\s:\s/)[0];
+													arr[t] = arr[t].split(/\s:\s/)[1];
+												}
+											});
+											((obj) => {
+												func.addString(obj, "tEno,uEno,tchar,uchar,skey,ssubkey,sprop,sother,sadd", arr.tEno, arr.uEno, arr.target, arr.user, arr.key, arr.subkey, arr.prop, arr.other, v.add);
+												if(v.info) {
+													func.addString(obj, "scri", v.info.critical);
+													["target", "user"].forEach((t) => {
+														var a = v.info[t + "Status"], n = t.substring(0, 1);
+														func.addString(obj, `${n}yDam,${n}hDam,${n}yHeal,${n}hHeal,${n}Rnzk,${n}Imp,${n}Retu,${n}Syat`, a.yDam, a.hDam, a.yHeal, a.hHeal, a["連続"], a.Impact, a["隊列"], a["射程"]);
+														((v) => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
+														((v) => {func.addString(obj, `${n}stAT,${n}stMAT,${n}stDF,${n}stMDF,${n}stEVA,${n}stMEVA,${n}stHIT,${n}stMHIT,${n}stSPD,${n}stCRI,${n}stHEAL,${n}stHP,${n}stMHP,${n}stSP,${n}stMSP`, v.AT, v.MAT, v.DF, v.MDF, v.EVA, v.MEVA, v.HIT, v.MHIT, v.SPD, v.CRI, v.HEAL, v.HP, v.MHP, v.SP, v.MSP);})(a.state);
+														((v) => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"]);})(a["変調深度"]);
+													});
+												}
+												func.logtext(obj);
+											})(JSON.parse(JSON.stringify(obj)));
+										}
 									}
 								}
 							} else {
@@ -2173,8 +2179,13 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	func.selectchange();
 	result.select_list.addEventListener('change', func.selectchange, false);
 	result.select_button.addEventListener('click', function() {
-		var key = Object.keys(option);
-		r_func[key[parseInt(result.select_list.value)]]();
+		var key = Object.keys(option),
+			val = (" " + e.search_box.value).split(/\s+/),
+			reg = "";
+		val.shift();
+		val.forEach((v) => {reg += v + "|";});
+		reg = new RegExp(reg.substr(0, reg.length - 1));
+		r_func[key[parseInt(result.select_list.value)]](reg);
 	}, false);
 };
 
@@ -2431,6 +2442,17 @@ miu$._HTMLfunc.stylesheet = function() {
 			"padding: 0 0 0 30px",
 			"height: 100%",
 			"overflow-y: auto")
+		)
+		+ css(cl + "v_search_box",
+			font,
+			tx("box-sizing: border-box",
+			"text-align: left",
+			"font-size: 12px",
+			"margin-bottom: 10px",
+			"padding: 3px",
+			"background: rgba(0,0,0,0.5)",
+			"width: 100%")
+			
 		)
 		+ css(cl + "v_logGetTitle",
 			tx("padding: 2px 10px",
