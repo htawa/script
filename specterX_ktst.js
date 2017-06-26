@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.1.5
+// @version      0.1.6
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -53,28 +53,30 @@ const Scriptname = "specterX",
 		, "prop": [[0,3,4,5,6,7,8,9,16]]
 		, "other": [[9]]
 		, "syntax": "sturn,sid,slv,stype,uRetu,uSyat,upt,uchar,ustHP,ustMHP,ustSP,ustMSP,ustAT,ustMAT,u%AT,u%MAT,uH祝,uH衰,sspec,tRetu,tSyat,tpt,tchar,tstDF,tstMDF,t%DF,t%MDF,tH祝,tH衰,skey,ssubkey,sprop,sother,uyDam,thDam,scri,sadd"
+		, "search": ""
 	},
 	V_log_renzoku = {"key": [[9,11,31]]
 		, "subkey": [[8]]
 		, "prop": [[3,4,5,6,7,8,9,16]]
 		, "other": [[1,2,9]]
 		, "syntax": "sturn,snA,sid,slv,stype,upt,uchar,ustSPD,uRnzk,u%SPD,sspec,tpt,tchar,tstSPD,skey,ssubkey,sprop,sother"
+		, "search": ""
 	},
 	V_log_healing = {"key": [[8,13,16,17,31]]
 		, "subkey": [[8]]
 		, "prop": [[0,1,3,4,5,6,7,8,9,16]]
 		, "other": [[9]]
 		, "syntax": "sturn,sid,slv,stype,upt,uchar,ustHEAL,u%HEAL,uH毒,sspec,tpt,tchar,tstMHP,tstMSP,tH毒,skey,ssubkey,sprop,sother,uyHeal,thHeal,sadd"
+		, "search": ""
 	},
 	V_log_status = {"key": [[0,1,2,3,4,5,6,7,8,9,10,12,14,31]]
 		, "subkey": [[8]]
 		, "prop": [[3,4,5,6,7,8,9,16]]
 		, "other": [[9]]
 		, "syntax": "sturn,sid,slv,stype,upt,uchar,sspec,tpt,tchar,skey,ssubkey,sprop,sother"
-	},
-	V_log_preset = {"ダメージ": V_log_damage, "連続": V_log_renzoku, "回復": V_log_healing, "ステータス": V_log_status};
+		, "search": ""
+	};
 console.log(Errtitle);
-
 
 
 miu$._GetStatus = {};
@@ -85,6 +87,69 @@ miu$._GetStatus = {};
 
 miu$._Skill = {};
 
+//////////////////////////////////////////////////////////////
+// webstorage
+//
+
+miu$._JSON = {};
+
+miu$._JSON.GET = {};
+
+miu$._JSON.check = function(type) {
+	try {
+		var storage = window[type],
+			x = "__storage_test__";
+		storage.setItem(x,x);
+		storage.removeItem(x);
+		return true;
+	} catch(e) {
+		return false;
+	}
+};
+
+miu$._JSON.start = function(func) {
+	var type = "localStorage";
+	if(miu$._JSON.check(type)) {
+		func(window[type]);
+	} else {
+		alert(type + "を使用出来ませんでした。");
+	}
+};
+
+miu$._JSON.save = function() {
+	miu$._JSON.start((ls) => {
+		ls.setItem("specterX_ktst", JSON.stringify(miu$._JSON.GET));
+	});
+};
+
+miu$._JSON.remove = function() {
+	miu$._JSON.start((ls) => {
+		ls.removeItem("specterX_ktst");
+	});
+};
+
+miu$._JSON.set = function() {
+	miu$._JSON.start((ls) => {
+		miu$._JSON.GET = ls.getItem("specterX_ktst");
+		if(!miu$._JSON.GET) {
+			miu$._JSON.GET = {};
+			miu$._JSON.GET.V_log_preset = {"ダメージ": V_log_damage, "連続": V_log_renzoku, "回復": V_log_healing, "ステータス": V_log_status};
+			miu$._JSON.save();
+		} else {
+			miu$._JSON.GET = JSON.parse(miu$._JSON.GET);
+			if(!Object.keys(miu$._JSON.GET.V_log_preset).length) {
+				miu$._JSON.GET.V_log_preset = {"ダメージ": V_log_damage, "連続": V_log_renzoku, "回復": V_log_healing, "ステータス": V_log_status};
+				miu$._JSON.save();
+			}
+		}
+	});
+};
+
+miu$._JSON.log = function() {
+	miu$._JSON.start((ls) => {
+		console.log(ls);
+	});
+};
 
 //////////////////////////////////////////////////////////////
 // flag
@@ -436,9 +501,10 @@ miu$._REG.damage = function(RegPCstr) {
 };
 
 miu$._REG.effect = function() {
+	var str = "増加|減少|上昇|低下|奪取|強奪|回復|ダメージ";
 	this.Status = new RegExp("^(.?AT|.?DF|.?HIT|.?EVA|SPD|CRI|HEAL)(が|を)(.+)！$");
 	this.StatusKJ = new RegExp("^\\s*(.?AT|.?DF|.?HIT|.?EVA|SPD|CRI|HEAL)(\\d+)％(強化|弱化)");
-	this.StatusHS = new RegExp("^(M?HP|M?SP)?(が|を|に)?\\s*(\\d+)\\s*(.+?)！\\s*(.+?！)?$");
+	this.StatusHS = new RegExp("^(M?HP|M?SP)?(が|を|に)?\\s*(\\d+)\\s*の?(" + str + ")！\\s*(.+?！)?$");
 	this.yhHeal = new RegExp("(使う|受ける)スキルによるHP回復量が(.+)！$");
 	this.yhDam = new RegExp("^次に(受ける|与える)攻撃ダメージへの補正が\\s*");
 	this.Hentyo = new RegExp("^(猛毒|衰弱|麻痺|魅了|呪縛|混乱|祝福|加護)(を|に|への防御効果.|特性が|耐性が|深度が|深度を)(\\d*)(.*)！$");
@@ -453,7 +519,7 @@ miu$._REG.effect = function() {
 	this.keigen = new RegExp("(受ける)HP減少/奪取効果が(.+)！$");
 	this.impact = new RegExp("衝撃でよろめいた！$");
 	this.goei = new RegExp("対する攻撃を\\s*(\\d+)\\s*回護衛！");
-	this.syometu = new RegExp("が消滅！");
+	this.syometu = new RegExp("が消滅！$");
 };
 
 miu$._REG.checker = function() {
@@ -1339,8 +1405,8 @@ miu$._HTMLfunc.getInfo = function(tST, logdata, information_Window, response) {
 		information_window_sub = document.getElementById(((r) => {return r;})(Scriptname + "_information_window_sub")),
 		information_window_info = document.getElementById('information_window_info'),
 		e = {}, spec = [];
-	console.log(logdata);
-	console.log(response);
+	//console.log(logdata);
+	//console.log(response);
 	main_box.textContent = "";
 	information_window_sub.style.display = "";
 	logdata.forEach((v,i) => {if(!Array.isArray(v) && !checkObject(v.spec, "Undefined")) spec.push(i);});
@@ -1590,8 +1656,8 @@ miu$._HTMLfunc.input = function() {
 };
 
 miu$._HTMLfunc.menuTab = function(ev, open_Button, data) {
-	var v = ["view_status", "view_takeLog", "view_skillLog"],
-		m = ["ステータス", "ログ", "スキル"],
+	var v = ["view_status", "view_takeLog", "view_skillLog", "view_setting"],
+		m = ["ステータス", "ログ", "スキル", "設定"],
 		view = {}, menu = {}, onlist = {}, func = {},
 		menuOn = 0;
 	v.forEach((k) => {
@@ -1832,13 +1898,12 @@ miu$._HTMLfunc.view.view_status_character = function(data, key, onlist, viewElem
 //////view_takeLog////////////////////////////////////////////
 miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	console.log(key);
-	var e = {"select_area": "div", "logtop": "div", "select_main": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "select_getter": "div", "select_result": "div", "result_area": "div"},
+	var e = {"select_area": "div", "logtop": "div", "preset_select": "select", "preset_text": "input", "preset_button": "input", "preset_delete": "input", "select_main": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "select_getter": "div", "select_result": "div", "result_area": "div"},
 		select = {"target": "", "user": "", "key": "", "subkey": "", "prop": "", "other": ""},
 		result = {"select_list": "select", "select_button": "button"},
 		option = {"csv": 0, "timeTable": 1},
-		top_input = {}, rElem = {},
 		flag = new miu$._Flag.addressList(data.character),
-		func = {}, r_func = {};
+		rElem = {}, func = {}, r_func = {};
 	func.labelinput = (text, cl, inputtype) => {
 		var el = {"label": "", "input": "", "span": ""};
 		Object.keys(el).forEach((v) => {el[v] = document.createElement(v);});
@@ -1861,22 +1926,14 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 		});
 	};
 	func.create(e);
-	Object.keys(V_log_preset).forEach((v) => {
-		var el = func.labelinput(v, "logtype", "radio");
-		e.logtop.appendChild(el.label);
-		top_input[v] = el;
-		func.light(el.label);
-		el.input.addEventListener('change', function() {
-			var o = V_log_preset[el.span.textContent];
-			rElem.csv.getElementsByClassName('v_syntax')[0].value = o.syntax;
-			["key", "subkey", "prop", "other"].forEach((k) => {
-				Array.from(select[k].hide.getElementsByTagName('input')).forEach((input,i) => {
-					var j = flag.setIndex(i);
-					input.checked = (o[k][j[0]].indexOf(j[1]) + 1) ? true : false;
-				});
-			});
-		}, false);
-	});
+	miu$._HTMLfunc.view.view_takeLog_preset(e.preset_select, miu$._JSON.GET.V_log_preset);
+	e.preset_text.type = "text";
+	e.preset_text.placeholder = "登録名";
+	e.preset_text.spellcheck = false;
+	e.preset_button.type = "button";
+	e.preset_button.value = "登録";
+	e.preset_delete.type = "button";
+	e.preset_delete.value = "削除";
 	e.checkSelect.appendChild(e.search_box);
 	e.search_box.type = "search";
 	e.search_box.placeholder = "スキル検索";
@@ -1959,6 +2016,10 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	result.select_button.textContent = "search";
 	viewElem.appendChild(e.select_area);
 	e.select_area.appendChild(e.logtop);
+	e.logtop.appendChild(e.preset_select);
+	e.logtop.appendChild(e.preset_text);
+	e.logtop.appendChild(e.preset_button);
+	e.logtop.appendChild(e.preset_delete);
 	e.select_area.appendChild(e.select_main);
 	e.select_main.appendChild(e.checkSelect);
 	e.select_main.appendChild(e.select_right);
@@ -2093,51 +2154,54 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
 					func.logtext = (o) => {func.syntaxadd(Object.keys(o).map((k) => {return (o[k] === true) ? undefined : o[k];}).join(","));};
 					func.logd = (logdata, obj, searchid) => {
-						logdata.forEach((v,bool,arr) => {
+						logdata.forEach((v) => {
 							if(checkObject(v, "Object")) {
-								if(v.id || v.spec) {
-									if(v.id) {
-										func.addString(obj, "sid,slv,stype,snA", v.id, v.slv, v.type, v.nA);
-										searchid = v.id;
-									} else {
-										func.addString(obj, "sspec", v.spec);
-									}
-								} else {
-									if(reg.test(searchid)) {
-										bool = 1;
-										arr = {};
-										Object.keys(keys).forEach((k) => {
-											bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
-											arr[k] = flag[flag.checkkey(k)][flag.getIndex(v[k])][0];
-										});
-										if(bool) {
-											["target", "user"].forEach((t) => {
-												if(arr[t]) {
-													arr[t.substring(0, 1) + "Eno"] = arr[t].split(/\s:\s/)[0];
-													arr[t] = arr[t].split(/\s:\s/)[1];
-												}
-											});
-											((obj) => {
-												func.addString(obj, "tEno,uEno,tchar,uchar,skey,ssubkey,sprop,sother,sadd", arr.tEno, arr.uEno, arr.target, arr.user, arr.key, arr.subkey, arr.prop, arr.other, v.add);
-												if(v.info) {
-													func.addString(obj, "scri", v.info.critical);
-													["target", "user"].forEach((t) => {
-														var a = v.info[t + "Status"], n = t.substring(0, 1);
-														func.addString(obj, `${n}yDam,${n}hDam,${n}yHeal,${n}hHeal,${n}Rnzk,${n}Imp,${n}Retu,${n}Syat`, a.yDam, a.hDam, a.yHeal, a.hHeal, a["連続"], a.Impact, a["隊列"], a["射程"]);
-														((v) => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
-														((v) => {func.addString(obj, `${n}stAT,${n}stMAT,${n}stDF,${n}stMDF,${n}stEVA,${n}stMEVA,${n}stHIT,${n}stMHIT,${n}stSPD,${n}stCRI,${n}stHEAL,${n}stHP,${n}stMHP,${n}stSP,${n}stMSP`, v.AT, v.MAT, v.DF, v.MDF, v.EVA, v.MEVA, v.HIT, v.MHIT, v.SPD, v.CRI, v.HEAL, v.HP, v.MHP, v.SP, v.MSP);})(a.state);
-														((v) => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"]);})(a["変調深度"]);
-													});
-												}
-												func.logtext(obj);
-											})(JSON.parse(JSON.stringify(obj)));
-										}
-									}
-								}
+								["id", "spec"].forEach((k) => {
+									if(v[k]) searchid = func["logd_" + k](obj, v, searchid);
+								});
+								if(!v.id && !v.spec && reg.test(searchid)) func.logd_check(obj, v);
 							} else {
 								func.logd(v, JSON.parse(JSON.stringify(obj)), searchid);
 							}
 						});
+					};
+					func.logd_id = (obj, v, searchid) => {
+						func.addString(obj, "sid,slv,stype,snA", v.id, v.slv, v.type, v.nA);
+						return v.id;
+					};
+					func.logd_spec = (obj, v, searchid) => {
+						func.addString(obj, "sspec", v.spec);
+						return searchid;
+					};
+					func.logd_check = (obj, v) => {
+						var bool = 1, arr = {};
+						Object.keys(keys).forEach((k) => {
+							bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
+							arr[k] = flag[flag.checkkey(k)][flag.getIndex(v[k])][0];
+						});
+						if(bool) {
+							["target", "user"].forEach((t) => {
+								if(arr[t]) {
+									arr[t.substring(0, 1) + "Eno"] = arr[t].split(/\s:\s/)[0];
+									arr[t] = arr[t].split(/\s:\s/)[1];
+								}
+							});
+							func.logd_info(JSON.parse(JSON.stringify(obj)), arr, v);
+						}
+					};
+					func.logd_info = (obj, arr, v) => {
+						func.addString(obj, "tEno,uEno,tchar,uchar,skey,ssubkey,sprop,sother,sadd", arr.tEno, arr.uEno, arr.target, arr.user, arr.key, arr.subkey, arr.prop, arr.other, v.add);
+						if(v.info) {
+							func.addString(obj, "scri", v.info.critical);
+							["target", "user"].forEach((t) => {
+								var a = v.info[t + "Status"], n = t.substring(0, 1);
+								func.addString(obj, `${n}yDam,${n}hDam,${n}yHeal,${n}hHeal,${n}Rnzk,${n}Imp,${n}Retu,${n}Syat`, a.yDam, a.hDam, a.yHeal, a.hHeal, a["連続"], a.Impact, a["隊列"], a["射程"]);
+								((v) => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
+								((v) => {func.addString(obj, `${n}stAT,${n}stMAT,${n}stDF,${n}stMDF,${n}stEVA,${n}stMEVA,${n}stHIT,${n}stMHIT,${n}stSPD,${n}stCRI,${n}stHEAL,${n}stHP,${n}stMHP,${n}stSP,${n}stMSP`, v.AT, v.MAT, v.DF, v.MDF, v.EVA, v.MEVA, v.HIT, v.MHIT, v.SPD, v.CRI, v.HEAL, v.HP, v.MHP, v.SP, v.MSP);})(a.state);
+								((v) => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"]);})(a["変調深度"]);
+							});
+						}
+						func.logtext(obj);
 					};
 					syn.split(/,/).forEach((v,i,a) => {
 						if(syntaxText[v]) {
@@ -2186,11 +2250,127 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 		reg = new RegExp(reg.substr(0, reg.length - 1));
 		r_func[key[parseInt(result.select_list.value)]](reg);
 	}, false);
+	e.preset_select.addEventListener('change', function(ev) {
+		var o = miu$._JSON.GET.V_log_preset[ev.target[ev.target.value].textContent];
+		rElem.csv.getElementsByClassName('v_syntax')[0].value = o.syntax;
+		e.search_box.value = o.search;
+		["key", "subkey", "prop", "other"].forEach((k) => {
+			Array.from(select[k].hide.getElementsByTagName('input')).forEach((input,i) => {
+				var j = flag.setIndex(i);
+				input.checked = (o[k][j[0]].indexOf(j[1]) + 1) ? true : false;
+			});
+		});
+	}, false);
+	e.preset_button.addEventListener('click', function(ev) {
+		var key = (" " + e.preset_text.value).split(/\s+/);
+		key.shift();
+		key = key.join("");
+		if(key) {
+			miu$._JSON.GET.V_log_preset[key] = (() => {
+				var result = {};
+				result.syntax = rElem.csv.getElementsByClassName('v_syntax')[0].value;
+				result.search = e.search_box.value;
+				["key", "subkey", "prop", "other"].forEach((k) => {
+					result[k] = [];
+					Array.from(select[k].logGetSelect.getElementsByTagName('input')).forEach((input, i) => {
+						if(input.checked) {
+							i = flag.keysIndex(flag.checkkey(k), input.nextSibling.textContent, 1);
+							if(!result[k][i[0]]) result[k][i[0]] = [];
+							result[k][i[0]].push(i[1]);
+						}
+					});
+				});
+				return result;
+			})();
+			miu$._JSON.save();
+			miu$._HTMLfunc.view.view_takeLog_preset(e.preset_select, miu$._JSON.GET.V_log_preset);
+		}
+	}, false);
+	e.preset_delete.addEventListener('click', function(ev) {
+		try {
+			var val = e.preset_select[e.preset_select.selectedIndex].textContent;
+			if(miu$._JSON.GET.V_log_preset[val]) {
+				delete miu$._JSON.GET.V_log_preset[val];
+				miu$._HTMLfunc.view.view_takeLog_preset(e.preset_select, miu$._JSON.GET.V_log_preset);
+				miu$._JSON.save();
+			}
+		} catch(e) {
+			alert(e);
+		}
+	}, false);
+};
+
+miu$._HTMLfunc.view.view_takeLog_preset = function(select, e) {
+	select.textContent = "";
+	Object.keys(e).forEach((v,i) => {
+		var op = document.createElement('option');
+		op.textContent = v;
+		op.value = i;
+		select.appendChild(op);
+	});
 };
 
 //////view_skillLog///////////////////////////////////////////
 miu$._HTMLfunc.view.view_skillLog = function(data, key, onlist, viewElem) {
 	console.log(key);
+};
+
+//////view_skillLog///////////////////////////////////////////
+miu$._HTMLfunc.view.view_setting = function(data, key, onlist, viewElem) {
+	console.log(key);
+	var e = {"setting_area": "div", "setting_url": "label"},
+		json = {"text": "span", "file": "input", "save": "input"},
+		func = {};
+	Object.keys(e).forEach((v) => {
+		e[v] = document.createElement(e[v]);
+		e[v].classList.add("v_" + v);
+	});
+	Object.keys(json).forEach((v) => {
+		json[v] = document.createElement(json[v]);
+		json[v].classList.add("v_setting_url_" + v);
+		e.setting_url.appendChild(json[v]);
+	});
+	json.text.textContent = "jsonURL :";
+	json.file.type = "file";
+	json.file.spellcheck = false;
+	json.save.type = "button";
+	json.save.value = "save";
+	viewElem.appendChild(e.setting_area);
+	e.setting_area.appendChild(e.setting_url);
+	func.fileselect = function(ev) {
+		var file = ev.target.files;
+		ev.stopPropagation();
+		ev.preventDefault();
+		try {
+			Array.from(file).forEach((f) => {
+				var reader = new FileReader();
+				if(/json/.test(f.type)) {
+					reader.onload = function(e) {
+						var el = document.getElementById('view_takeLog').getElementsByClassName('v_preset_select')[0];
+						miu$._JSON.GET = JSON.parse(e.target.result);
+						miu$._HTMLfunc.view.view_takeLog_preset(el, miu$._JSON.GET.V_log_preset);
+						miu$._JSON.save();
+					};
+					reader.readAsText(f);
+				} else {
+					throw "jsonファイルではありません。";
+				}
+			});
+		} catch(e) {
+			alert(e);
+		}
+	};
+	json.file.addEventListener('change', func.fileselect, false);
+	json.save.addEventListener('click', function(ev) {
+		var blob = new Blob([JSON.stringify(miu$._JSON.GET, null, "\t")], {"type": "application/json"}),
+			a = document.createElement('a'),
+			url = URL.createObjectURL(blob);
+		a.href = url;
+		a.target = "_blank";
+		a.download = "specterX_ktst_setting.json";
+		a.click();
+		URL.revokeObjectURL(url);
+	}, false);
 };
 
 //////stylesheet//////////////////////////////////////////////
@@ -2324,9 +2504,12 @@ miu$._HTMLfunc.stylesheet = function() {
 		////
 		+ css(cl + Scriptname + "_view", disp.n)
 	///////////////////////
+	/*
 		+ css(id + "view_status", absolute)
 		+ css(id + "view_takeLog", absolute)
 		+ css(id + "view_skillLog", absolute)
+		+ css(id + "view_setting", absolute)
+		*/
 	///////////////////////
 		+ css(cl + "pt_area",
 			tx("float: left",
@@ -2413,17 +2596,32 @@ miu$._HTMLfunc.stylesheet = function() {
 			"font-size: 12px",
 			"text-align: left")
 		)
-		+ css(cl + "v_logtype",
+		+ css(cl + "v_preset_select",
+			font,
+			tx("color: rgb(0,0,0)",
+			"width: 100px",
+			"font-family: serif")
+		)
+		+ css(cl + "v_preset_text",
+			font,
 			tx("box-sizing: border-box",
-			"padding: 5px 10px 5px 0",
-			"border-radius: 5px",
-			"cursor: pointer")
+			"font-size: 12px",
+			"margin-left: 10px",
+			"padding: 3px",
+			"background: rgba(0,0,0,0.5)",
+			"width: 100px")
 		)
-		+ css(cl + "v_logtype input",
-			tx("vertical-align: sub")
+		+ css(cl + "v_preset_button",
+			font,
+			tx("color: rgb(0,0,0)",
+			"width: 60px",
+			"font-family: serif")
 		)
-		+ css(cl + "v_logtype span",
-			tx("margin-left: 5px")
+		+ css(cl + "v_preset_delete",
+			font,
+			tx("color: rgb(0,0,0)",
+			"width: 60px",
+			"font-family: serif")
 		)
 		+ css(cl + "v_hide",
 			tx("margin: 0 0 10px 5px"),
@@ -2573,6 +2771,35 @@ miu$._HTMLfunc.stylesheet = function() {
 		
 		
 		
+	///////////////////////	
+		+ css(cl + "v_setting_area",
+			font,
+			tx("padding: 10px 0 0 20px",
+			"text-align: left")
+		)
+		+ css(cl + "v_setting_url_file",
+			font,
+			tx("box-sizing: border-box",
+			"padding: 3px",
+			"margin-left: 5px",
+			"background: rgba(0,0,0,0.5)",
+			"width: 300px",
+			"font-family: serif")
+		)
+		+ css(cl + "v_setting_url_open",
+			font,
+			tx("color: rgb(0,0,0)",
+			"width: 60px",
+			"margin-left: 10px",
+			"font-family: serif")
+		)
+		+ css(cl + "v_setting_url_save",
+			font,
+			tx("color: rgb(0,0,0)",
+			"width: 60px",
+			"font-family: serif")
+		)
+		
 		
 		
 	///////////////////////
@@ -2716,6 +2943,7 @@ miu$._CREATEhtml.init = function() {
 		top_element = miu$._HTMLfunc.init(),
 		open_Button = miu$._HTMLfunc.getlog(top_element),
 		information_Window = miu$._HTMLfunc.informationWindow(top_element);
+	miu$._JSON.set();
 	if(Autoload) {
 		miu$._CREATEhtml.setlog(top_element, open_Button);
 	} else {
@@ -2761,8 +2989,6 @@ miu$._CREATEhtml.turnElem = function(elem) {
 	});
 	return res;
 };
-
-
 
 //////////////////////////////////////////////////////////////
 // start
