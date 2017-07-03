@@ -1990,7 +1990,7 @@ miu$._HTMLfunc.view.view_status_character = function(data, key, onlist, viewElem
 //////view_takeLog////////////////////////////////////////////
 miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	console.log(key);
-	var e = {"select_area": "div", "logtop": "div", "preset_select": "select", "preset_text": "input", "preset_button": "input", "preset_delete": "input", "select_main": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "select_getter": "div", "select_result": "div", "result_area": "div"},
+	var e = {"select_area": "div", "logtop": "div", "preset_select": "select", "preset_text": "input", "preset_button": "input", "preset_delete": "input", "select_main": "div", "select_area2": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "select_getter": "div", "select_result": "div", "result_area": "div"},
 		select = {"target": "", "user": "", "key": "", "subkey": "", "prop": "", "other": ""},
 		result = {"select_list": "select", "select_button": "button"},
 		option = {"csv": 0, "timeTable": 1},
@@ -2113,8 +2113,9 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	e.logtop.appendChild(e.preset_button);
 	e.logtop.appendChild(e.preset_delete);
 	e.select_area.appendChild(e.select_main);
-	e.select_main.appendChild(e.checkSelect);
-	e.select_main.appendChild(e.select_right);
+	e.select_main.appendChild(e.select_area2);
+	e.select_area2.appendChild(e.checkSelect);
+	e.select_area2.appendChild(e.select_right);
 	e.select_right.appendChild(e.select_getter);
 	e.select_right.appendChild(e.result_area);
 	e.select_getter.appendChild(result.select_list);
@@ -2719,10 +2720,18 @@ miu$._HTMLfunc.stylesheet = function() {
 			disp.n
 		)
 		+ css(cl + "v_select_main",
+			tx("position: relative",
+			"height: 100%",
+			"width: 100%")
+		)
+		+ css(cl + "v_select_area2",
+			absolute,
 			tx("display: flex",
 			"flex-direction: row",
-			"position: relative",
-			"height: 100%",
+			"margin: 0",
+			"padding: 0",
+			"max-height: 100%",
+			"top: 0px",
 			"text-align: left")
 		)
 		+ css(cl + "v_checkSelect",
