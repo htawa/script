@@ -2488,7 +2488,9 @@ miu$._HTMLfunc.stylesheet = function() {
 			"margin: 0")
 		)
 		+ css(id + Scriptname,
-			font
+			font,
+			tx("max-width: 100%",
+			"max-height: 100%")
 		)
 		+ css(id + "open_Button",
 			tx("position: fixed",
