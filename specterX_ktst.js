@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.1.6
+// @version      0.1.7
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -357,11 +357,13 @@ miu$._DATAstate.stB = function(mhp, msp, eno) {
 	this.goei = {};
 	this["隊列"] = 0;
 	this["射程"] = 0;
+	this.stateCount = new miu$._DATAstate.count();
 };
 
 miu$._DATAstate.stBstate = function(mhp, msp) {
 	this.HP = mhp;
 	this.MHP = mhp;
+	this.nMHP = mhp;
 	this.SP = msp;
 	this.MSP = msp;
 	this.AT = 0;
@@ -408,10 +410,32 @@ miu$._DATAstate.stC = function() {
 	});
 };
 
+miu$._DATAstate.count = function() {
+	this.HP = [0, 0]; //[js, ds]
+	this.MHP = [0, 0];
+	this.SP = [0, 0];
+	this.MSP = [0, 0];
+	this.AT = [0, 0];
+	this.MAT = [0, 0];
+	this.DF = [0, 0];
+	this.MDF = [0, 0];
+	this.EVA = [0, 0];
+	this.MEVA = [0, 0];
+	this.HIT = [0, 0];
+	this.MHIT = [0, 0];
+	this.SPD = [0, 0];
+	this.CRI = [0, 0];
+	this.HEAL = [0, 0];
+};
+
 miu$._DATAstate._update = function(num, add) {
 	num += add;
 	if(num < 0) num = 0;
 	return num;
+};
+
+miu$._DATAstate.stBstate.prototype.nMHPdoku = function(add) {
+	this.nMHP -= Math.floor(add / 2);
 };
 
 miu$._DATAstate.stBper.prototype.Reset = function(key) {
@@ -593,7 +617,7 @@ miu$._LOGdata.init.prototype.createL = function(elem) {
 	this.log = result;
 	return true;
 };
-
+/*
 miu$._LOGdata.init.prototype.createS = function() {
 	this.log.forEach((v) => {
 		console.log("createS",v.log);
@@ -672,6 +696,7 @@ miu$._LOGdata.checkFlag = function(check, type, li) {
 	i = f[type].findIndex((v) => { return (v[0] === check); });
 	return (miu$._Flag.GET[i] & get) ? true : false;
 };
+*/
 
 miu$._LOGdata.regstr = function(str, reg) {
 	var result = str;
@@ -946,7 +971,7 @@ miu$._GETlog.messageTable.prototype.checkSkill = function(elem, msg, reg, tST, s
 				}
 			} else {
 				//スキル名等を取得
-				res = this.getSkillName(reg, msglist, tST, i, response + "," + responseIndex);
+				res = this.getSkillName(reg, msglist, tST, i, result, response + "," + responseIndex);
 			}
 			//console.log(i,len,res);
 			if(res) result[responseIndex++] = res;
@@ -1012,7 +1037,9 @@ miu$._GETlog.messageTable.prototype.skillef = function(reg, msglist, tST, x, cou
 
 	//effect
 miu$._GETlog.messageTable.prototype.Status = function(reg, msglist, tST, efflist) {
-	return this.listResult(tST, efflist.target, msglist.sName.user, undefined, efflist.str[1], undefined, efflist.str[3], undefined);
+	var li = this.listResult(tST, efflist.target, msglist.sName.user, undefined, efflist.str[1], undefined, efflist.str[3], undefined);
+	miu$._GETlog.count(tST, li.prop, li.key, efflist.target);
+	return this.pushResult(tST, efflist, msglist, li);
 };
 
 miu$._GETlog.messageTable.prototype.StatusKJ = function(reg, msglist, tST, efflist) {
@@ -1033,11 +1060,11 @@ miu$._GETlog.messageTable.prototype.StatusKJ = function(reg, msglist, tST, effli
 	} else {
 		tST[efflist.target].per.Reset(key);
 	}
-	return this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, prop, undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, efflist) {
-	var cri = 0, flag = new miu$._Flag.addressList(tST),
+	var cri = 0, f = new miu$._Flag.addressList(tST),
 		list = [], info = {}, func = {},
 		target = efflist.target,
 		regprop = /(盾受|肩代|盾回避|Critical)/,
@@ -1059,29 +1086,33 @@ miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, effli
 	func["sublist"] = (str) => {
 		var add = parseInt(str[3], 10),
 			prop = str[4],
-			key = str[1];
+			key = str[1],
+			li;
 		if(!key) key = "HP";
 		if(/ダメージ/.test(prop)) prop = "ダメージ";
+		li = this.listResult(tST, target, msglist.sName.user, add, key, undefined, prop, undefined);
+		miu$._GETlog.count(tST, li.prop, li.key, target);
+		if(key === "MHP") miu$._GETlog.statenMHP(tST, prop, msglist.sName.user, target, add, efflist.rlist[0].slv, efflist.rlist[0].type);
 		miu$._GETlog.statehpsp(prop, msglist.sName.user, target, key, add, tST);
-		return this.listResult(tST, target, msglist.sName.user, add, key, undefined, prop, undefined);
+		return li;
 	};
 	for(i = 1; ((len - i) >= 1) && (i <= 3); ++i) {
 		obj = efflist.rlist[len - i];
-		if(checkObject(obj, "Undefined") || Array.isArray(obj) || !regprop.test(flag.other[flag.getIndex(obj.other)][0])) break;
-		func[flag.other[flag.getIndex(obj.other)][0]](obj);
+		if(checkObject(obj, "Undefined") || Array.isArray(obj) || !regprop.test(f.other[f.getIndex(obj.other)][0])) break;
+		func[f.other[f.getIndex(obj.other)][0]](obj);
 	}
 	list.push(func.sublist(efflist.str));
 	if(efflist.str[5]) list.push(func.sublist(efflist.str[5].split(reg.effect.StatusHS)));
-	((i, prop, e, f) => {
+	((i, prop, e) => {
 		prop = list.find((v) => {return /奪取|強奪/.test(f.prop[f.getIndex(v.prop)][0]);});
 		if(prop) prop = f.prop[f.getIndex(prop.prop)][0];
 		e[0] = miu$._HTMLfunc.setInfo(efflist.rlist, tST, target, msglist.sName.user, efflist.response);
 		e[1] = miu$._HTMLfunc.sethpsp(tST, target, msglist.sName.user, prop);
 		msglist.elembr[i].parentNode.insertBefore(e[0], msglist.elembr[i]);
 		msglist.elembr[i].parentNode.insertBefore(e[1], msglist.elembr[i]);
-	})(efflist.i, "", [], flag);
+	})(efflist.i, "", []);
 	info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(target, tST), "critical": cri};
-	if(flag.prop[flag.getIndex(list[0].prop)][0] === "ダメージ") {
+	if(f.prop[f.getIndex(list[0].prop)][0] === "ダメージ") {
 		tST[msglist.sName.user].yDam = 0;
 		tST[target].hDam = 0;
 	}
@@ -1093,7 +1124,7 @@ miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, effli
 
 miu$._GETlog.messageTable.prototype.yhHeal = function(reg, msglist, tST, efflist) {
 	var key = (efflist.str[1] === "使う") ? "yHeal" : "hHeal";
-	return this.listResult(tST, efflist.target, msglist.sName.user, undefined, key, undefined, efflist.str[2], undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, key, undefined, efflist.str[2], undefined));
 };
 
 miu$._GETlog.messageTable.prototype.yhDam = function(reg, msglist, tST, efflist) {
@@ -1101,7 +1132,7 @@ miu$._GETlog.messageTable.prototype.yhDam = function(reg, msglist, tST, efflist)
 		add = efflist.str[2].split(/(.\d+)/);
 	add = (add.length > 1) ? parseInt(add[1], 10) : 0;
 	tST[efflist.target][key] = add;
-	return this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist) {
@@ -1111,6 +1142,7 @@ miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist
 		prop = efflist.str[4],
 		key = Object.keys(reghentyo.keys).find((v) => { return reghentyo.keys[v].test(efflist.str[2]);}),
 		funckey = (key) ? key.match(/防御|深度/) : null;
+	add = (add) ? add : undefined;
 	if(funckey !== null) {
 		prop = ((fk, pr) => {
 			var func = {};
@@ -1140,19 +1172,19 @@ miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist
 			return func[fk](pr);
 		})(funckey[0], prop);
 	}
-	return this.listResult(tST, efflist.target, msglist.sName.user, add, key, subkey, prop, undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, subkey, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.Renzok = function(reg, msglist, tST, efflist) {
 	var prop = (efflist.str[1] === "早く") ? "増加" : "減少";
-	return this.listResult(tST, efflist.target, msglist.sName.user, undefined, "連続", undefined, prop, undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "連続", undefined, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.syatai = function(reg, msglist, tST, efflist) {
 	var add = parseInt(efflist.str[3], 10),
 		key = efflist.str[1];
 	tST[efflist.target][key] = add;
-	return this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.shield = function(reg, msglist, tST, efflist) {
@@ -1164,22 +1196,20 @@ miu$._GETlog.messageTable.prototype.shield = function(reg, msglist, tST, efflist
 		sub = -1;
 	}
 	tST[efflist.target].shield = miu$._DATAstate._update(tST[efflist.target].shield, (add * sub));
-	return this.listResult(tST, efflist.target, msglist.sName.user, add, "shield", undefined, prop, undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, "shield", undefined, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.nasi = function(reg, msglist, tST, efflist) {
-	return this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "効果なし", undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "効果なし", undefined));
 };
 
 miu$._GETlog.messageTable.prototype.kaihi = function(reg, msglist, tST, efflist) {
-	var li = this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "回避", undefined);
-	li.info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(efflist.target, tST)};
-	return li;
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "回避", undefined));
 };
 
 miu$._GETlog.messageTable.prototype.hate = function(reg, msglist, tST, efflist) {
 	var prop = (efflist.str[1] === "やすく") ? "増加" : "減少";
-	return this.listResult(tST, efflist.target, msglist.sName.user, undefined, "Hate", undefined, prop, undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "Hate", undefined, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.fuyoLv = function(reg, msglist, tST, efflist) {
@@ -1188,28 +1218,28 @@ miu$._GETlog.messageTable.prototype.fuyoLv = function(reg, msglist, tST, efflist
 		if(checkObject(f[k], "Undefined")) f[k] = 0;
 		if(!miu$._Flag.fuyoSkill[k]) miu$._Flag.fuyoSkill[k] = true;
 		f[k] = miu$._DATAstate._update(f[k], add * i);
-		return this.listResult(tST, t, msglist.sName.user, add, "付与lv", k, prop, undefined);
+		return this.pushResult(tST, efflist, msglist, this.listResult(tST, t, msglist.sName.user, add, "付与lv", k, prop, undefined));
 	})(efflist.target, efflist.str[1], parseInt(efflist.str[2], 10), (/付加|増加/.test(efflist.str[3])) ? "増加" : "減少", tST[efflist.target].fuyoLv);
 };
 
 miu$._GETlog.messageTable.prototype.useSp = function(reg, msglist, tST, efflist) {
-	return this.listResult(tST, efflist.target, msglist.sName.user, parseInt(efflist.str[1], 10), "消費SP", undefined, efflist.str[2], undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, parseInt(efflist.str[1], 10), "消費SP", undefined, efflist.str[2], undefined));
 };
 
 miu$._GETlog.messageTable.prototype.keigen = function(reg, msglist, tST, efflist) {
-	return this.listResult(tST, efflist.target, msglist.sName.user, undefined, "軽減率", undefined, efflist.str[2], undefined);
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "軽減率", undefined, efflist.str[2], undefined));
 };
 
 miu$._GETlog.messageTable.prototype.impact = function(reg, msglist, tST, efflist) {
 	tST[efflist.target].Impact++;
-	return this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, undefined, "Impact");
+	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, undefined, "Impact"));
 };
 
 miu$._GETlog.messageTable.prototype.goei = function(reg, msglist, tST, efflist) {
 	return ((t,u,add) => {
 		if(typeof tST[u].goei[t] === "undefined") tST[u].goei[t] = 0;
 		tST[u].goei[t] = add;
-		return this.listResult(tST, t, u, add, "護衛", undefined, undefined, undefined);
+		return this.pushResult(tST, efflist, msglist, this.listResult(tST, t, u, add, "護衛", undefined, undefined, undefined));
 	})(efflist.target, msglist.sName.user, parseInt(efflist.str[1], 10));
 };
 
@@ -1217,12 +1247,12 @@ miu$._GETlog.messageTable.prototype.syometu = function(reg, msglist, tST, efflis
 
 
 	//スキル名等を取得用
-miu$._GETlog.messageTable.prototype.getSkillName = function(reg, msglist, tST, x, response) {
+miu$._GETlog.messageTable.prototype.getSkillName = function(reg, msglist, tST, x, result, response) {
 	var key = Object.keys(reg.action).find((v) => { return reg.action[v].test(msglist.msg[x]); });
-	if(key) return this[key](reg, msglist, tST, x, response);
+	if(key) return this[key](reg, msglist, tST, x, result, response);
 };
 	//action
-miu$._GETlog.messageTable.prototype.P = function(reg, msglist, tST, x, response) {
+miu$._GETlog.messageTable.prototype.P = function(reg, msglist, tST, x, result, response) {
 	var strP = msglist.msg[x].split(reg.action.P),
 		r = /LV/;
 	strP[3] = "0";
@@ -1235,7 +1265,7 @@ miu$._GETlog.messageTable.prototype.P = function(reg, msglist, tST, x, response)
 	return {"user": msglist.sName.user, "id": msglist.sName.id, "slv": parseInt(msglist.sName.slv, 10), "type": "P"};
 };
 
-miu$._GETlog.messageTable.prototype.n = function(reg, msglist, tST, x, response) {
+miu$._GETlog.messageTable.prototype.n = function(reg, msglist, tST, x, result, response) {
 	++msglist.idx[0];
 	var el = miu$._GETlog.splitGetNode(msglist.elem.parentNode.children, 'nodeName', 'BR')[1][msglist.idx[0]];
 	return ((res, el, msg, str) => {
@@ -1252,7 +1282,7 @@ miu$._GETlog.messageTable.prototype.n = function(reg, msglist, tST, x, response)
 	})([], miu$._GETlog.splitGetNode(el.children, 'nodeName', 'BR')[1], "", msglist.msg[x].split(reg.action.n));
 };
 
-miu$._GETlog.messageTable.prototype.L = function(reg, msglist, tST, x, response) {
+miu$._GETlog.messageTable.prototype.L = function(reg, msglist, tST, x, result, response) {
 	var strL = msglist.msg[x].split(reg.action.L),
 		elem = miu$._GETlog.splitGetNode(msglist.elem.children, 'nodeName', 'I(?!.)')[0];
 	elem = elem[1].textContent;
@@ -1260,30 +1290,36 @@ miu$._GETlog.messageTable.prototype.L = function(reg, msglist, tST, x, response)
 	return {"user": msglist.sName.user, "id": msglist.sName.id, "slv": parseInt(msglist.sName.slv, 10), "type": "LA"};
 };
 
-miu$._GETlog.messageTable.prototype.tEnd = function(reg, msglist, tST, x, response) {};
+miu$._GETlog.messageTable.prototype.tEnd = function(reg, msglist, tST, x, result, response) {};
 
-miu$._GETlog.messageTable.prototype.Mc = function(reg, msglist, tST, x, response) {
-	return {"user": msglist.sName.user, "id": "魅了キャンセル", "変調深度": tST[msglist.sName.user]["変調深度"]["魅"], "type": "H"};
+miu$._GETlog.messageTable.prototype.Mc = function(reg, msglist, tST, x, result, response) {
+	return {"user": msglist.sName.user, "id": "魅了キャンセル", "slv": tST[msglist.sName.user]["変調深度"]["魅"], "type": "H"};
 };
 
-miu$._GETlog.messageTable.prototype.Md = function(reg, msglist, tST, x, response) {
+miu$._GETlog.messageTable.prototype.Md = function(reg, msglist, tST, x, result, response) {
 	var dam = msglist.msg[x].split(reg.action.Md),
 		elem = miu$._GETlog.splitGetNode(msglist.elem.parentNode.children, 'className', 'BAA\\d+')[0],
-		result = [{},[{},{}]], func = {}, flag = new miu$._Flag.addressList(tST);
+		res = [{},[{},{}]], func = {}, flag = new miu$._Flag.addressList(tST);
 	func.i_t = (a,b) => {return flag[a][flag.getIndex(b[a])][0];};
 	elem = miu$._GETlog.splitGetNode(elem[0].children, 'className', 'F5')[0];
 	elem = elem[0].textContent.split(reg.nTrim);
-	msglist.sName = {"user": elem[1], "id": "猛毒ダメージ", "slv": false};
-	result[0] = { "user": msglist.sName.user, "id": "猛毒ダメージ", "変調深度": tST[msglist.sName.user]["変調深度"]["毒"], "type": "H" };
-	result[1][0] = this.listResult(tST, msglist.sName.user, msglist.sName.user, parseInt(dam[1], 10), "HP", undefined, "ダメージ", undefined);
-	result[1][1] = this.listResult(tST, msglist.sName.user, msglist.sName.user, parseInt(dam[2], 10), "MHP", undefined, "減少", undefined);
-	miu$._GETlog.statehpsp(func.i_t("prop", result[1][0]), msglist.sName.user, msglist.sName.user, func.i_t("key", result[1][0]), result[1][0].add, tST);
-	miu$._GETlog.statehpsp(func.i_t("prop", result[1][1]), msglist.sName.user, msglist.sName.user, func.i_t("key", result[1][1]), result[1][1].add, tST);
-	(() => {
-		var e = miu$._HTMLfunc.sethpsp(tST, msglist.sName.user, msglist.sName.user, "");
-		msglist.elem.appendChild(e);
-	})();
-	return result;
+	msglist.sName = {"user": elem[1], "id": "猛毒ダメージ", "slv": 0};
+	res[0] = { "user": msglist.sName.user, "id": "猛毒ダメージ", "slv": tST[msglist.sName.user]["変調深度"]["毒"], "type": "H" };
+	res[1][0] = this.listResult(tST, msglist.sName.user, msglist.sName.user, parseInt(dam[1], 10), "HP", undefined, "ダメージ", undefined);
+	res[1][1] = this.listResult(tST, msglist.sName.user, msglist.sName.user, parseInt(dam[2], 10), "MHP", undefined, "減少", undefined);
+	miu$._GETlog.statehpsp(func.i_t("prop", res[1][0]), msglist.sName.user, msglist.sName.user, func.i_t("key", res[1][0]), res[1][0].add, tST);
+	res[1][0].info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST)};
+	tST[msglist.sName.user].state.nMHPdoku(res[1][1].add);
+	miu$._GETlog.statehpsp(func.i_t("prop", res[1][1]), msglist.sName.user, msglist.sName.user, func.i_t("key", res[1][1]), res[1][1].add, tST);
+	res[1][1].info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST)};
+	((e) => {
+		var t = response.substr(0, response.length - 1) + 1;
+		e[0] = miu$._HTMLfunc.setInfo(res, tST, msglist.sName.user, msglist.sName.user, t);
+		e[1] = miu$._HTMLfunc.sethpsp(tST, msglist.sName.user, msglist.sName.user, "");
+		msglist.elem.appendChild(e[0]);
+		msglist.elem.appendChild(e[1]);
+	})([]);
+	return res;
 };
 
 miu$._GETlog.messageTable.prototype.listResult = function(tST, target, user, add, key, subkey, prop, other) {
@@ -1291,22 +1327,74 @@ miu$._GETlog.messageTable.prototype.listResult = function(tST, target, user, add
 	return {"target": f.keysIndex("character", ((target) ? tST[target].Eno + " : " + target : target), 0), "user": f.keysIndex("character", ((user) ? tST[user].Eno + " : " + user : user), 0), "add": add, "key": f.keysIndex("key", key, 0), "subkey": f.keysIndex("subkey", subkey, 0), "prop": f.keysIndex("prop", prop, 0), "other": f.keysIndex("other", other, 0)};
 };
 
+miu$._GETlog.messageTable.prototype.pushResult = function(tST, efflist, msglist, li) {
+	var e = miu$._HTMLfunc.setInfo(efflist.rlist, tST, efflist.target, msglist.sName.user, efflist.response);
+	(el => {el.parentNode.insertBefore(e, el);})(msglist.elembr[efflist.i]);
+	li.info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(efflist.target, tST)};
+	return li;
+};
 
 //////////////////////////////////////////////////////////////
 	//
 miu$._GETlog.statehpsp = function(prop, user, target, key, add, tST) {
 	var regs = [/ダメージ|減少|低下/, /奪取|強奪/, /増加|上昇|回復/],
-		i = regs.findIndex((v) => {return v.test(prop);});
+		i = regs.findIndex((v) => {return v.test(prop);}),
+		func = (t) => {if(/SP/.test(key) && (t[key] < 0)) t[key] = 0;};
 	if(i < 0) alert(prop);
 	if(--i) {
 		tST[target].state[key] += add * i;
-	} else {
+		func(tST[target].state);
+	} else {//奪取|強奪
 		tST[target].state[key] += -add;
+		func(tST[target].state);
 		tST[user].state[key] += add;
 		target = user;
 	}
 	if(!/M../.test(key) && (tST[target].state[key] > tST[target].state["M" + key])) {
 		tST[target].state[key] = tST[target].state["M" + key];
+	}
+};
+
+miu$._GETlog.count = function(tST, prop, key, target) {
+	var f = new miu$._Flag.addressList(tST),
+		key = f.key[f.getIndex(key)][0],
+		i = [[3], [6, 7], [8]].findIndex((v) => {return v.find((v) => {return v === f.getIndex(prop);});});
+	if(i) {
+		tST[target].stateCount[key][i-1]++;
+	} else {
+		//効果が無かった
+	}
+};
+
+miu$._GETlog.statenMHP = function(tST, prop, user, target, add, slv, type) {
+	var regs = [/減少|低下/, /奪取|強奪/, /増加|上昇/],
+		i = regs.findIndex((v) => {return v.test(prop);}),
+		func = {}, result;
+	slv = (slv || (type === "P")) ? slv : new Array(50).fill(0);
+	func.MHP = (MHP, c) => {
+		var x = [0.1];
+		x = x.find((x) => {
+			if(checkObject(slv, "Array")) {
+				slv = slv.findIndex((a, lv) => {return func.Math(MHP, lv, c, x) === add;});
+				return (slv !== -1);
+			} else {
+				return func.Math(MHP, slv, c, x) === add;
+			}
+		});
+		if(x) {
+			return x;
+		}else {
+			return alert("nMHPが計算できませんでした");
+		}
+	};
+	func.Math = (MHP, lv, c, x) => {return Math.floor(Math.floor(MHP * x) * (1 + lv / 10) / c);};
+	if(--i) {
+		result = func.MHP(tST[target].state.MHP, tST[target].stateCount.MHP[0]);
+		result = func.Math(tST[target].state.nMHP, slv, tST[target].stateCount.MHP[0], result);
+		tST[target].state.nMHP += add * i;
+	} else {//奪取|強奪
+		tST[target].state.nHMP += -add;
+		tST[user].state.nMHP += add;
 	}
 };
 
@@ -1404,9 +1492,9 @@ miu$._HTMLfunc.getInfo = function(tST, logdata, information_Window, response) {
 		main_box = document.getElementById('information_window_main'),
 		information_window_sub = document.getElementById(((r) => {return r;})(Scriptname + "_information_window_sub")),
 		information_window_info = document.getElementById('information_window_info'),
-		e = {}, spec = [];
-	//console.log(logdata);
-	//console.log(response);
+		e = {}, spec = [], logd = [];
+	console.log(logdata);
+	console.log(response);
 	main_box.textContent = "";
 	information_window_sub.style.display = "";
 	logdata.forEach((v,i) => {if(!Array.isArray(v) && !checkObject(v.spec, "Undefined")) spec.push(i);});
@@ -1417,8 +1505,8 @@ miu$._HTMLfunc.getInfo = function(tST, logdata, information_Window, response) {
 	e.skill.innerHTML = ((t, res) => {
 		res = spec.findIndex((v) => {return response < v;}) - 1;
 		res = (res < 0) ? spec.length - 1 : res;
-		t += "<div class=\"" + Scriptname + "_italic\"><span class=\"_info_box_skill_name\">" + logdata[0].id + "</span><span class=\"_info_box_skill_text\">" + logdata[0].slv + "</span>";
-		t += "<span class=\"_info_box_skill_text\">" + logdata[0].type + "</span><span class=\"_info_box_skill_text\">" + logdata[0].user + "</span></div>";
+		t += "<div class=\"" + Scriptname + "_italic\"><span class=\"_info_box_skill_name\">" + logdata[0].id + "</span><span class=\"_info_box_skill_text\">lv " + logdata[0].slv + "</span>";
+		t += "<span class=\"_info_box_skill_text\">" + logdata[0].type + ((logdata[0].type === "A") ? ("(" + logdata[0].nA + ")") : "") + "</span><span class=\"_info_box_skill_text\">" + logdata[0].user + "</span></div>";
 		t += "<div><span class=\"_info_box_skill_text\">" + ((sp) => {return (logdata[0].type === "A") ? (sp) ? -sp * (sp + 1) / 2 * 10 : "-" : "-";})(spec.length) + "/sp</span>";
 		t += "<span class=\"_info_box_skill_text\">" + ((t) => {
 			spec.forEach((v,i) => {t += (() => {return (i > 0) ? "→" : "◇";})() + "</span><span" + (() => {return (i === res) ? " class=\"" + Scriptname + "_bold\"" : "";})() + ">" + logdata[v].spec + "</span><span>";});
@@ -1430,7 +1518,7 @@ miu$._HTMLfunc.getInfo = function(tST, logdata, information_Window, response) {
 	e.eff = document.createElement('div');
 	e.eff.classList.add("_info_box_skill");
 	e.el = {};
-	((logd) => {
+	(() => {
 		var f = new miu$._Flag.addressList(tST),
 			txarr = {"add": "add", "key": "key", "subkey": "subkey", "prop": "prop", "other": "other", "target": "character", "info": "-"},
 			te = {"table": document.createElement('table'), "thead": document.createElement('thead'), "tbody": document.createElement('tbody'), "tr": {}, "td": {}};
@@ -1439,8 +1527,12 @@ miu$._HTMLfunc.getInfo = function(tST, logdata, information_Window, response) {
 		te.table.appendChild(te.thead);
 		te.table.appendChild(te.tbody);
 		te.table.classList.add("_info_box_skill_table");
-		if(!Array.isArray(logd)) logd = [logd];
-		logd.splice(0,0,txarr);
+		logd[0] = txarr;
+		if(Array.isArray(logdata[response])) {
+			logdata[response].forEach((o) => {logd.push(o);});
+		} else {
+			logd.push(logdata[response]);
+		}
 		logd.forEach((v,i) => {
 			var bh = (i) ? "tbody" : "thead";
 			te.tr[i] = document.createElement('tr');
@@ -1457,7 +1549,7 @@ miu$._HTMLfunc.getInfo = function(tST, logdata, information_Window, response) {
 				te.tr[i].appendChild(te.td[i][t]);
 			});
 		});
-	})(JSON.parse(JSON.stringify(logdata[response])));
+	})();
 	main_box.appendChild(e.eff);
 	((ef) => {
 		var func = {}, efo;
@@ -1482,7 +1574,7 @@ miu$._HTMLfunc.getInfo = function(tST, logdata, information_Window, response) {
 						efo.classList.add(Scriptname + "_info_openclose_click");
 						efo.removeEventListener('mouseenter', func.mouseenter, false);
 						efo.removeEventListener('mouseleave', func.mouseleave, false);
-						miu$._HTMLfunc.informationWindowSub(logdata[response][i-1].info, information_window_info, logdata[response][i-1].target, logdata[response][i-1].user, tST);
+						miu$._HTMLfunc.informationWindowSub(logd[i].info, information_window_info, logd[i].target, logd[i].user, tST);
 					} else {
 						func.prev(efo);
 						information_window_sub.style.display = "";
@@ -2060,6 +2152,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 					"Imp": [1, "Impact"],
 					"stHP": [1, "HP"],
 					"stMHP": [1, "MHP"],
+					"stnMHP": [1, "nMHP"],
 					"stSP": [1, "SP"],
 					"stMSP": [1, "MSP"],
 					"stAT": [1, "AT"],
@@ -2197,7 +2290,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 								var a = v.info[t + "Status"], n = t.substring(0, 1);
 								func.addString(obj, `${n}yDam,${n}hDam,${n}yHeal,${n}hHeal,${n}Rnzk,${n}Imp,${n}Retu,${n}Syat`, a.yDam, a.hDam, a.yHeal, a.hHeal, a["連続"], a.Impact, a["隊列"], a["射程"]);
 								((v) => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
-								((v) => {func.addString(obj, `${n}stAT,${n}stMAT,${n}stDF,${n}stMDF,${n}stEVA,${n}stMEVA,${n}stHIT,${n}stMHIT,${n}stSPD,${n}stCRI,${n}stHEAL,${n}stHP,${n}stMHP,${n}stSP,${n}stMSP`, v.AT, v.MAT, v.DF, v.MDF, v.EVA, v.MEVA, v.HIT, v.MHIT, v.SPD, v.CRI, v.HEAL, v.HP, v.MHP, v.SP, v.MSP);})(a.state);
+								((v) => {func.addString(obj, `${n}stAT,${n}stMAT,${n}stDF,${n}stMDF,${n}stEVA,${n}stMEVA,${n}stHIT,${n}stMHIT,${n}stSPD,${n}stCRI,${n}stHEAL,${n}stHP,${n}stMHP,${n}stnMHP,${n}stSP,${n}stMSP`, v.AT, v.MAT, v.DF, v.MDF, v.EVA, v.MEVA, v.HIT, v.MHIT, v.SPD, v.CRI, v.HEAL, v.HP, v.MHP, v.nMHP, v.SP, v.MSP);})(a.state);
 								((v) => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"]);})(a["変調深度"]);
 							});
 						}
@@ -2243,9 +2336,8 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	result.select_list.addEventListener('change', func.selectchange, false);
 	result.select_button.addEventListener('click', function() {
 		var key = Object.keys(option),
-			val = (" " + e.search_box.value).split(/\s+/),
+			val = e.search_box.value.trim().split(/\s+/),
 			reg = "";
-		val.shift();
 		val.forEach((v) => {reg += v + "|";});
 		reg = new RegExp(reg.substr(0, reg.length - 1));
 		r_func[key[parseInt(result.select_list.value)]](reg);
@@ -2262,8 +2354,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 		});
 	}, false);
 	e.preset_button.addEventListener('click', function(ev) {
-		var key = (" " + e.preset_text.value).split(/\s+/);
-		key.shift();
+		var key = e.preset_text.value.trim().split(/\s+/);
 		key = key.join("");
 		if(key) {
 			miu$._JSON.GET.V_log_preset[key] = (() => {
@@ -2397,9 +2488,7 @@ miu$._HTMLfunc.stylesheet = function() {
 			"margin: 0")
 		)
 		+ css(id + Scriptname,
-			font,
-			tx("width: 100%",
-			"height: 100%")
+			font
 		)
 		+ css(id + "open_Button",
 			tx("position: fixed",
