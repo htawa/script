@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.1.8
+// @version      0.1.9
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -340,8 +340,9 @@ miu$._DATAstate.stA = function(sa, sb, sc, sd, se, sf) {
 	this["MN"] = sf;
 };
 
-miu$._DATAstate.stB = function(mhp, msp, eno) {
+miu$._DATAstate.stB = function(mhp, msp, eno, ptid) {
 	this.Eno = eno;
+	this.PTid = ptid;
 	this.yDam = 0;
 	this.hDam = 0;
 	this.yHeal = 0;
@@ -592,9 +593,9 @@ miu$._LOGdata.init.prototype.createL = function(elem) {
 		tST = {},
 		result = [],
 		RegPCstr = "",
-		msg, i;
+		msg, i, pt;
 	Object.keys(this.character).forEach((name) => {
-		tST[name] = new miu$._DATAstate.stB(this.character[name].startMHP, this.character[name].startMSP, this.character[name].Eno);
+		tST[name] = new miu$._DATAstate.stB(this.character[name].startMHP, this.character[name].startMSP, this.character[name].Eno, this.character[name].PTid);
 		RegPCstr += miu$._LOGdata.regstr(name, reg) + "|";
 	});
 	RegPCstr = RegPCstr.substr(0, RegPCstr.length - 1);
@@ -607,8 +608,9 @@ miu$._LOGdata.init.prototype.createL = function(elem) {
 				tST[v[1]]["変調深度"] = v[2];
 			});
 		});
-		msg = new miu$._GETlog.messageTable(elem, i, reg, tST);
-		result[i] = {"pt": miu$._GETlog.NoP(ch.character), "log": msg.msg};
+		pt = miu$._GETlog.NoP(ch.character);
+		msg = new miu$._GETlog.messageTable(elem, i, reg, tST, pt);
+		result[i] = {"pt": pt, "log": msg.msg};
 	}
 	i = result.findIndex((v) => {return v.pt.some((v) => {return !v;});});
 	if(i > 0) result.splice(i, result.length - i);
@@ -721,8 +723,8 @@ miu$._GETlog = {};
 
 miu$._GETlog.NoP = function(mem) {
 	var x = [];
-	mem.forEach((val) => {
-		x.push(val.length);
+	mem.forEach(v => {
+		x.push(v.length);
 	});
 	return x;
 };
@@ -821,11 +823,11 @@ miu$._GETlog.characterTable.prototype.hentyo = function(hnty) {
 };
 
 //////ターン毎のログを取得//////////////////////////////////////
-miu$._GETlog.messageTable = function(tElem, tNum, reg, tST) {
-	this.msg = this.Turn(tElem, tNum, reg, tST);
+miu$._GETlog.messageTable = function(tElem, tNum, reg, tST, pt) {
+	this.msg = this.Turn(tElem, tNum, reg, tST, pt);
 };
 
-miu$._GETlog.messageTable.prototype.Turn = function(tElem, tNum, reg, tST) {
+miu$._GETlog.messageTable.prototype.Turn = function(tElem, tNum, reg, tST, pt) {
 	var response = new String(tNum),
 		result = [], func = {};
 	func.TurnName = function(searchName) {
@@ -860,7 +862,7 @@ miu$._GETlog.messageTable.prototype.Turn = function(tElem, tNum, reg, tST) {
 					for(idx[0] = 0, len = elem.length; idx[0] < len; ++idx[0]) {
 						sName = {"user": false, "id": false, "slv": false};
 						msg = elem[idx[0]].textContent.split(/\n/);
-						res[idx[0]] = this.checkSkill(elem[idx[0]], msg, reg, tST, sName, idx, response + "," + idx[0])[0];
+						res[idx[0]] = this.checkSkill(elem[idx[0]], msg, reg, tST, sName, idx, response + "," + idx[0], pt)[0];
 					}
 					return res;
 				})([], miu$._GETlog.splitGetNode(v.children, 'nodeName', 'BR')[1]);
@@ -883,7 +885,7 @@ miu$._GETlog.messageTable.prototype.Turn = function(tElem, tNum, reg, tST) {
 					elem.forEach((v,i) => {
 						var sName = {"user": false, "id": false, "slv": false},
 							msg = v.textContent.split(/\n/);
-						res[i] = this.checkSkill(v, msg, reg, tST, sName, idx, response + "," + i)[0];
+						res[i] = this.checkSkill(v, msg, reg, tST, sName, idx, response + "," + i, pt)[0];
 					});
 					return res;
 				})([], miu$._GETlog.splitGetNode(v.children, 'nodeName', 'BR')[1]);
@@ -932,9 +934,9 @@ miu$._GETlog.messageTable.prototype.msgelem = function(elem) {
 	return a;
 };
 
-miu$._GETlog.messageTable.prototype.checkSkill = function(elem, msg, reg, tST, sName, idx, response) {
+miu$._GETlog.messageTable.prototype.checkSkill = function(elem, msg, reg, tST, sName, idx, response, pt) {
 	//console.log(response);
-	var msglist = {"elem": elem, "msg": this.msgcheck(msg, reg), "sName": sName, "idx": idx, "elembr": this.msgelem(elem)},
+	var msglist = {"elem": elem, "msg": this.msgcheck(msg, reg), "sName": sName, "idx": idx, "elembr": this.msgelem(elem), "pt": pt},
 		countlist = {"Critical": 0, "TateKata": 0},
 		result = [], i = 0, len, pcount = 0, responseIndex = 0;
 	if(msglist.sName.user && msglist.sName.id) {
@@ -963,7 +965,7 @@ miu$._GETlog.messageTable.prototype.checkSkill = function(elem, msg, reg, tST, s
 				if(!res && reg.action.P.test(msglist.msg[i])) {
 					pElem = miu$._GETlog.splitGetNode(msglist.elem.children, 'nodeName', 'DL')[0];
 					if(pElem.length) {
-						res = this.checkSkill(pElem[pcount], pElem[pcount].textContent.split(/\n/), reg, tST, {"user": false, "id": false, "slv": false}, idx, response + "," + responseIndex);
+						res = this.checkSkill(pElem[pcount], pElem[pcount].textContent.split(/\n/), reg, tST, {"user": false, "id": false, "slv": false}, idx, response + "," + responseIndex, pt);
 						i += res[1];
 						res = res[0];
 						++pcount;
@@ -1092,7 +1094,7 @@ miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, effli
 		if(/ダメージ/.test(prop)) prop = "ダメージ";
 		li = this.listResult(tST, target, msglist.sName.user, add, key, undefined, prop, undefined);
 		miu$._GETlog.count(tST, li.prop, li.key, target);
-		if(key === "MHP") miu$._GETlog.statenMHP(tST, prop, msglist.sName.user, target, add, efflist.rlist[0].slv, efflist.rlist[0].type);
+		if(key === "MHP") miu$._GETlog.statenMHP(tST, prop, msglist.sName.user, target, add, efflist.rlist[0].slv, efflist.rlist[0].type, msglist.pt, miu$._GETlog.specSplit(efflist));
 		miu$._GETlog.statehpsp(prop, msglist.sName.user, target, key, add, tST);
 		return li;
 	};
@@ -1275,7 +1277,7 @@ miu$._GETlog.messageTable.prototype.n = function(reg, msglist, tST, x, result, r
 		})(miu$._GETlog.splitGetNode(el[0].children, 'className', 'P2')[0].length);
 		el.forEach((v,i) => {
 			msg = v.textContent.split(/\n/);
-			res[i] = this.checkSkill(v, msg, reg, tST, {"user": str[1], "id": skillName, "slv": 0, "nA": parseInt(str[3], 10)}, msglist.idx, response + "," + i)[0];
+			res[i] = this.checkSkill(v, msg, reg, tST, {"user": str[1], "id": skillName, "slv": 0, "nA": parseInt(str[3], 10)}, msglist.idx, response + "," + i, msglist.pt)[0];
 			skillName = false;
 		});
 		return res;
@@ -1366,36 +1368,86 @@ miu$._GETlog.count = function(tST, prop, key, target) {
 	}
 };
 
-miu$._GETlog.statenMHP = function(tST, prop, user, target, add, slv, type) {
+miu$._GETlog.statenMHP = function(tST, prop, user, target, add, slv, type, pt, spec) {
 	var regs = [/減少|低下/, /奪取|強奪/, /増加|上昇/],
 		i = regs.findIndex((v) => {return v.test(prop);}),
-		func = {}, result;
+		func = {}, result, lvhosei = 0;
 	slv = (slv || (type === "P")) ? slv : new Array(50).fill(0);
 	func.MHP = (MHP, c) => {
-		var x = [0.1];
+		var x = [0.1, 0.04],
+			s = slv;
 		x = x.find((x) => {
 			if(checkObject(slv, "Array")) {
-				slv = slv.findIndex((a, lv) => {return func.Math(MHP, lv, c, x) === add;});
-				return (slv !== -1);
+				s = slv.findIndex((u, lv) => {return func.Math(MHP, lv, c, x) === add;});
+				return (s !== -1);
 			} else {
 				return func.Math(MHP, slv, c, x) === add;
 			}
 		});
+		slv = s;
 		if(x) {
 			return x;
-		}else {
+		} else {
 			return alert("nMHPが計算できませんでした");
 		}
 	};
-	func.Math = (MHP, lv, c, x) => {return Math.floor(Math.floor(MHP * x) * (1 + lv / 10) / c);};
+	func.Math = (MHP, lv, c, x) => {return Math.floor(Math.floor(MHP * x) * (1 + (lv + lvhosei) / 10) / c);};
+	func.hosei = (v) => {
+		var lv = 0;
+		if(/全/.test(v[0])) {
+			if(/味|敵/.test(v[0])) {
+				lv = pt[tST[target].PTid];
+			} else {
+				pt.forEach(v => {lv += v;});
+				if(/他/.test(v[0])) --lv;
+			}
+		}
+		return lv;
+	};
+	func.zenhosei = h => {
+		if(h > 0) h = (h === 1) ? 4 : (h === 2) ? 2 : (h === 3) ? 1 : (20 / h - 5);
+		return h;
+	};
+	spec.forEach((v,i) => {
+		if(!(i % 2) && /MHP/.test(v[1])) {
+			lvhosei = func.hosei(v[0]);
+		}
+	});
+	lvhosei = func.zenhosei(lvhosei);
 	if(--i) {
 		result = func.MHP(tST[target].state.MHP, tST[target].stateCount.MHP[0]);
 		result = func.Math(tST[target].state.nMHP, slv, tST[target].stateCount.MHP[0], result);
-		tST[target].state.nMHP += add * i;
+		tST[target].state.nMHP += result * i;
 	} else {//奪取|強奪
 		tST[target].state.nHMP += -add;
 		tST[user].state.nMHP += add;
 	}
+};
+
+miu$._GETlog.specSplit = function(efflist) {
+	var i = efflist.response.split(/,/),
+		spec;
+	for(i = i[i.length - 1] - 1; 0 < i; --i) {
+		spec = efflist.rlist[i].spec;
+		if(spec) break;
+	}
+	if(!spec) return;
+	spec = spec.split(/(\&|\+)/);
+	spec.forEach((v,i,a) => {
+		var n, t;
+		if(!(i % 2)) {
+			v = v.split(/:/);
+			if(v.length === 1) v = ["対" , v[0]];
+			t = v[0].split(/(\d*)$/);
+			if(t.length > 1) t.length--;
+			n = parseInt(t[1], 10);
+			if(!n) n = 1;
+			t[1] = n;
+			v[0] = t;
+		}
+		a[i] = v;
+	});
+	return spec;
 };
 
 //////ログの整形///////////////////////////////////////////////
@@ -2247,15 +2299,15 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 					func.syntaxadd = (v) => {res += v + "\n";};
 					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
 					func.logtext = (o) => {func.syntaxadd(Object.keys(o).map((k) => {return (o[k] === true) ? undefined : o[k];}).join(","));};
-					func.logd = (logdata, obj, searchid) => {
+					func.logd = (logdata, obj, searchid, pt) => {
 						logdata.forEach((v) => {
 							if(checkObject(v, "Object")) {
 								["id", "spec"].forEach((k) => {
 									if(v[k]) searchid = func["logd_" + k](obj, v, searchid);
 								});
-								if(!v.id && !v.spec && reg.test(searchid)) func.logd_check(obj, v);
+								if(!v.id && !v.spec && reg.test(searchid)) func.logd_check(obj, v, pt);
 							} else {
-								func.logd(v, JSON.parse(JSON.stringify(obj)), searchid);
+								func.logd(v, JSON.parse(JSON.stringify(obj)), searchid, pt);
 							}
 						});
 					};
@@ -2267,7 +2319,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 						func.addString(obj, "sspec", v.spec);
 						return searchid;
 					};
-					func.logd_check = (obj, v) => {
+					func.logd_check = (obj, v, pt) => {
 						var bool = 1, arr = {};
 						Object.keys(keys).forEach((k) => {
 							bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
@@ -2280,16 +2332,16 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 									arr[t] = arr[t].split(/\s:\s/)[1];
 								}
 							});
-							func.logd_info(JSON.parse(JSON.stringify(obj)), arr, v);
+							func.logd_info(JSON.parse(JSON.stringify(obj)), arr, v, pt);
 						}
 					};
-					func.logd_info = (obj, arr, v) => {
+					func.logd_info = (obj, arr, v, pt) => {
 						func.addString(obj, "tEno,uEno,tchar,uchar,skey,ssubkey,sprop,sother,sadd", arr.tEno, arr.uEno, arr.target, arr.user, arr.key, arr.subkey, arr.prop, arr.other, v.add);
 						if(v.info) {
 							func.addString(obj, "scri", v.info.critical);
 							["target", "user"].forEach((t) => {
 								var a = v.info[t + "Status"], n = t.substring(0, 1);
-								func.addString(obj, `${n}yDam,${n}hDam,${n}yHeal,${n}hHeal,${n}Rnzk,${n}Imp,${n}Retu,${n}Syat`, a.yDam, a.hDam, a.yHeal, a.hHeal, a["連続"], a.Impact, a["隊列"], a["射程"]);
+								func.addString(obj, `${n}pt,${n}yDam,${n}hDam,${n}yHeal,${n}hHeal,${n}Rnzk,${n}Imp,${n}Retu,${n}Syat`, pt[a.PTid], a.yDam, a.hDam, a.yHeal, a.hHeal, a["連続"], a.Impact, a["隊列"], a["射程"]);
 								((v) => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
 								((v) => {func.addString(obj, `${n}stAT,${n}stMAT,${n}stDF,${n}stMDF,${n}stEVA,${n}stMEVA,${n}stHIT,${n}stMHIT,${n}stSPD,${n}stCRI,${n}stHEAL,${n}stHP,${n}stMHP,${n}stnMHP,${n}stSP,${n}stMSP`, v.AT, v.MAT, v.DF, v.MDF, v.EVA, v.MEVA, v.HIT, v.MHIT, v.SPD, v.CRI, v.HEAL, v.HP, v.MHP, v.nMHP, v.SP, v.MSP);})(a.state);
 								((v) => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"]);})(a["変調深度"]);
@@ -2310,8 +2362,8 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 						func.syntaxadd(Object.keys(obj).join(","));
 						data.log.forEach((v,i) => {
 							obj = JSON.parse(JSON.stringify(syn));
-							func.addString(obj, "sturn,upt,tpt", i, v.pt[0], v.pt[1]);
-							func.logd(v.log, JSON.parse(JSON.stringify(obj)), "");
+							func.addString(obj, "sturn", i);
+							func.logd(v.log, JSON.parse(JSON.stringify(obj)), "", v.pt);
 						});
 					}
 					return res;
