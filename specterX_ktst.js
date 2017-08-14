@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.1.9
+// @version      0.2.0
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -1372,7 +1372,7 @@ miu$._GETlog.statenMHP = function(tST, prop, user, target, add, slv, type, pt, s
 	var regs = [/減少|低下/, /奪取|強奪/, /増加|上昇/],
 		i = regs.findIndex((v) => {return v.test(prop);}),
 		func = {}, result, lvhosei = 0;
-	slv = (slv || (type === "P")) ? slv : new Array(50).fill(0);
+	slv = slv ? slv : new Array(50).fill(0);
 	func.MHP = (MHP, c) => {
 		var x = [0.1, 0.04],
 			s = slv;
@@ -1388,7 +1388,7 @@ miu$._GETlog.statenMHP = function(tST, prop, user, target, add, slv, type, pt, s
 		if(x) {
 			return x;
 		} else {
-			return alert("nMHPが計算できませんでした");
+			return alert(target + ": nMHPが計算できませんでした");
 		}
 	};
 	func.Math = (MHP, lv, c, x) => {return Math.floor(Math.floor(MHP * x) * (1 + (lv + lvhosei) / 10) / c);};
