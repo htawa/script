@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.2.0
+// @version      0.2.1
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -328,7 +328,7 @@ miu$._DATAstate.PC = function(name, eno, ptid, mhp, msp, psp, gensui, i) {
 	this.status = new miu$._DATAstate.stA(5,5,5,5,5,5);
 	this.statusBt = new miu$._DATAstate.stC();
 	this.flagindex = i;
-	this.skill = {};
+	this.skill = {"A": {}, "P": {}};
 };
 
 miu$._DATAstate.stA = function(sa, sb, sc, sd, se, sf) {
@@ -563,7 +563,6 @@ miu$._LOGdata.init = function() {
 	this.character = {};
 	this.acterTable = [];
 	this.log = [];
-	this.sList = {};
 };
 
 miu$._LOGdata.init.prototype.createC = function(elem) {
@@ -614,11 +613,37 @@ miu$._LOGdata.init.prototype.createL = function(elem) {
 	}
 	i = result.findIndex((v) => {return v.pt.some((v) => {return !v;});});
 	if(i > 0) result.splice(i, result.length - i);
-	//console.log("戦闘終了");
-	//console.log(tST);
 	this.log = result;
 	return true;
 };
+
+miu$._LOGdata.init.prototype.createS = function() {
+	var func = {};
+	func.loop = logdata => {
+		logdata.forEach(v => {
+			if(checkObject(v, "Array")) {
+				func.loop(v);
+			} else {
+				func.object(v);
+			}
+		});
+	};
+	func.object = obj => {
+		var t = (obj.type === "LA") ? "A" : obj.type,
+			skill;
+		if(!checkObject(t, "Undefined") && /[PA]/.test(t)) {
+			skill = this.character[obj.user].skill[t];
+			if(checkObject(skill[obj.id], "Undefined")) {
+				skill[obj.id] = 1;
+			} else {
+				++skill[obj.id];
+			}
+		}
+	};
+	this.log.forEach(v => {func["loop"](v.log);});
+	return true;
+};
+
 /*
 miu$._LOGdata.init.prototype.createS = function() {
 	this.log.forEach((v) => {
@@ -677,18 +702,6 @@ miu$._LOGdata.init.prototype.getNoEffectAndConvert = function(logdata, id, ctr) 
 	if(bool && !checkObject(defS["typeconv"], "Undefined")) { //変調変換
 		
 	}
-};
-
-miu$._LOGdata.init.prototype.getNoEffect = function(logdata, defS, ctr) {
-	ctr.forEach((v) => {
-		if(Array.isArray(v)) {
-			if(defS["typejs"][1]);
-		}
-	});
-};
-
-miu$._LOGdata.init.prototype.getConvert = function() {
-
 };
 
 miu$._LOGdata.checkFlag = function(check, type, li) {
@@ -2042,10 +2055,10 @@ miu$._HTMLfunc.view.view_status_character = function(data, key, onlist, viewElem
 //////view_takeLog////////////////////////////////////////////
 miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	console.log(key);
-	var e = {"select_area": "div", "logtop": "div", "preset_select": "select", "preset_text": "input", "preset_button": "input", "preset_delete": "input", "select_main": "div", "select_area2": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "select_getter": "div", "select_result": "div", "result_area": "div"},
+	var e = {"select_area": "div", "logtop": "div", "preset_select": "select", "preset_text": "input", "preset_button": "input", "preset_delete": "input", "select_main": "div", "select_area2": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "search_box_spec": "input", "select_getter": "div", "select_result": "div", "result_area": "div"},
 		select = {"target": "", "user": "", "key": "", "subkey": "", "prop": "", "other": ""},
 		result = {"select_list": "select", "select_button": "button"},
-		option = {"csv": 0, "timeTable": 1},
+		option = {"csv": 0, "passiveCounter": 1, "timeTable": 2},
 		flag = new miu$._Flag.addressList(data.character),
 		rElem = {}, func = {}, r_func = {};
 	func.labelinput = (text, cl, inputtype) => {
@@ -2082,6 +2095,10 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	e.search_box.type = "search";
 	e.search_box.placeholder = "スキル検索";
 	e.search_box.spellcheck = false;
+	e.checkSelect.appendChild(e.search_box_spec);
+	e.search_box_spec.type = "search";
+	e.search_box_spec.placeholder = "効果一致検索";
+	e.search_box_spec.spellcheck = false;
 	Object.keys(select).forEach((v) => {
 		var el = {"logGetSelect": "div", "logGetTitle": "div", "hide": "div"},
 			span = {"icon": "▶", "name": ("." + v)};
@@ -2283,9 +2300,9 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 			t.table.appendChild(t.tbody);
 			els.manual.innerHTML = "<div>syntax<br>[ t~ : target ] , [ u~ : user ] , [ s~ : skill ]</div>";
 			els.manual.appendChild(t.table);
-			r_func["csv"] = (reg) => {
+			r_func["csv"] = reg => {
 				var keys = {}, func = {};
-				Object.keys(select).forEach((v) => {
+				Object.keys(select).forEach(v => {
 					keys[v] = [];
 					Array.from(select[v].logGetSelect.getElementsByTagName('input')).forEach((input, i) => {
 						if(input.checked) {
@@ -2299,29 +2316,30 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 					func.syntaxadd = (v) => {res += v + "\n";};
 					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
 					func.logtext = (o) => {func.syntaxadd(Object.keys(o).map((k) => {return (o[k] === true) ? undefined : o[k];}).join(","));};
-					func.logd = (logdata, obj, searchid, pt) => {
+					func.logd = (logdata, obj, searchid, spectxt, pt) => {
 						logdata.forEach((v) => {
 							if(checkObject(v, "Object")) {
-								["id", "spec"].forEach((k) => {
-									if(v[k]) searchid = func["logd_" + k](obj, v, searchid);
-								});
-								if(!v.id && !v.spec && reg.test(searchid)) func.logd_check(obj, v, pt);
+								if(v.id) {
+									searchid = func.logd_id(obj, v);
+								} else if(v.spec) {
+									spectxt = func.logd_spec(obj, v);
+								} else if(reg.skill.test(searchid) && reg.spec.test(spectxt)) func.logd_check(obj, v, pt);
 							} else {
-								func.logd(v, JSON.parse(JSON.stringify(obj)), searchid, pt);
+								func.logd(v, JSON.parse(JSON.stringify(obj)), searchid, spectxt, pt);
 							}
 						});
 					};
-					func.logd_id = (obj, v, searchid) => {
+					func.logd_id = (obj, v) => {
 						func.addString(obj, "sid,slv,stype,snA", v.id, v.slv, v.type, v.nA);
 						return v.id;
 					};
-					func.logd_spec = (obj, v, searchid) => {
+					func.logd_spec = (obj, v) => {
 						func.addString(obj, "sspec", v.spec);
-						return searchid;
+						return v.spec;
 					};
 					func.logd_check = (obj, v, pt) => {
 						var bool = 1, arr = {};
-						Object.keys(keys).forEach((k) => {
+						Object.keys(keys).forEach(k => {
 							bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
 							arr[k] = flag[flag.checkkey(k)][flag.getIndex(v[k])][0];
 						});
@@ -2363,7 +2381,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 						data.log.forEach((v,i) => {
 							obj = JSON.parse(JSON.stringify(syn));
 							func.addString(obj, "sturn", i);
-							func.logd(v.log, JSON.parse(JSON.stringify(obj)), "", v.pt);
+							func.logd(v.log, JSON.parse(JSON.stringify(obj)), "", "", v.pt);
 						});
 					}
 					return res;
@@ -2378,6 +2396,167 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 		e.result_area.appendChild(rElem.csv);
 	})();
 	(() => {
+	//passiveCounter
+		var els = {"passive_list": "select", "rText": "textarea", "rCopy": "input", "manual": "div"},
+			option = {"HP": 0/*, "命中": 1, "回避": 2*/},
+			func_passive = {};
+		Object.keys(els).forEach((v) => {
+			var d = document.createElement(els[v]);
+			d.classList.add("v_" + v);
+			els[v] = d;
+			rElem.passiveCounter.appendChild(d);
+		});
+		Object.keys(option).forEach((v) => {
+			var op = document.createElement('option');
+			op.textContent = v;
+			op.value = option[v];
+			els.passive_list.appendChild(op);
+			option[v] = op;
+		});
+		els.passive_list.classList.add("v_select_list");
+		els.rCopy.type = "button";
+		els.rCopy.value = "copy";
+		els.rText.readOnly = true;
+		els.rText.placeholder = " csv";
+		els.rText.spellcheck = false;
+		els.rText.value = "";
+		els.t = (() => {
+			func_passive["HP"] = reg => {
+				var skill = {},
+					i, keys = {};
+				["user", "target"].forEach(v => {
+					keys[v] = [];
+					Array.from(select[v].logGetSelect.getElementsByTagName('input')).forEach((input, i) => {
+						if(input.checked) {
+							i = flag.keysIndex(flag.checkkey(v), input.nextSibling.textContent, 1);
+							flag.resetFlag(keys[v], i);
+							flag.createFlag(keys[v], i);
+						}
+					});
+				});
+				keys["prop"] = [];
+				i = flag.keysIndex(flag.checkkey("prop"), "回復", 1);
+				flag.resetFlag(keys["prop"], i);
+				flag.createFlag(keys["prop"], i);
+				keys["key"] = [];
+				i = flag.keysIndex(flag.checkkey("key"), "HP", 1);
+				flag.resetFlag(keys["key"], i);
+				flag.createFlag(keys["key"], i);
+				func_passive.logd_check = v => {
+					var bool = 1;
+					Object.keys(keys).forEach(k => {
+						bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
+					});
+					return bool;
+				};
+				func_passive.loop = (logdata, pt) => {
+					var Aobj = false, healLog, func_a, skillIndex, spec;
+					func_a = (o,i) => {
+						if(Aobj) {
+							healLog = undefined;
+							if(func_passive.logd_check(o)) {
+								healLog = JSON.parse(JSON.stringify(o));
+								if(!skill[logdata[0].user]) skill[logdata[0].user] = {};
+								if(!skill[logdata[0].user][logdata[0].id]) skill[logdata[0].user][logdata[0].id] = [];
+								skill[logdata[0].user][logdata[0].id].push({"skill": JSON.parse(JSON.stringify(logdata[0])), "spec": spec, "pt": pt[healLog.info.targetStatus.PTid], "heal": JSON.parse(JSON.stringify(healLog)), "passive": []});
+							}
+						}
+					};
+					logdata.forEach((v,i) => {
+						if(checkObject(v, "Array") && v.length) {
+							if(checkObject(v[0], "Array")) {
+								func_passive.loop(v, pt);
+							} else if(v[0].type) {
+								if(/[P]/.test(v[0].type)) {
+									if(healLog) {
+										skillIndex = skill[logdata[0].user][logdata[0].id].length - 1;
+										skill[logdata[0].user][logdata[0].id][skillIndex].passive.push(JSON.parse(JSON.stringify(v[0])));
+									}
+								} else if(/[A]/.test(v[0].type)) {
+									func_passive.loop(v, pt);
+								}
+							} else {
+								(() => {
+									v.forEach((v,i) => {
+										func_a(v,i);
+										if(healLog) return;
+									});
+								})();
+							}
+						} else {
+							if(i === 0 && v.type) {
+								if(/[A]/.test(v.type)) Aobj = true;
+							} else if(v.spec) {
+								spec = v.spec;
+							} else {
+								func_a(v,i);
+							}
+						}
+					});
+				};
+				data.log.forEach(v => {func_passive.loop(v.log, v.pt);});
+				console.log(skill);
+				els.rText.value = ((syn, obj, bool, res) => {
+					var func = {}, logID = [], Pcount = [];
+					syn = "Auser,Aid,Aspec,target,tpt,tHP,tMHP,logID,Pid,Puser,Pcount";
+					func.syntaxadd = v => {res += v + "\n";};
+					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
+					func.logtext = o => {func.syntaxadd(Object.keys(o).map((k) => {return (o[k] === true) ? undefined : o[k];}).join(","));};
+					func.passivetext = (o, v) => {
+						var h = v.heal.info.targetStatus,
+							tname = flag[flag.checkkey("target")][flag.getIndex(v.heal.target)][0].split(/\s:\s/)[1];
+						logID[v.pt] = (logID[v.pt]) ? logID[v.pt] + 1 : 1;
+						func.addString(o, "Auser,Aid,Aspec,target", v.skill.user, v.skill.id, v.spec, tname);
+						func.addString(o, "tpt,tHP,tMHP,logID", v.pt, h.state.HP, h.state.MHP, logID[v.pt]);
+						if(v.passive.length) {
+							v.passive.forEach((p) => {
+								(o => {
+									if(reg.skill.test(p.id)) {
+										Pcount[v.pt] = (Pcount[v.pt]) ? Pcount[v.pt] + 1 : 1;
+										func.addString(o, "Pid,Puser,Pcount", p.id, p.user, Pcount[v.pt]);
+									}
+									func.logtext(o);
+								})(JSON.parse(JSON.stringify(o)));
+							});
+						} else {
+							func.logtext(o);
+						}
+					};
+					syn.split(/,/).forEach(v => {obj[v] = true;});
+					syn = JSON.parse(JSON.stringify(obj));
+					func.syntaxadd(Object.keys(obj).join(","));
+					data.acterTable.forEach((v) => {
+						v.forEach((name) => {
+							var s = skill[name];
+							if(s) {
+								Object.keys(s).forEach((skillname) => {
+									s[skillname].forEach(v => {
+										if(reg.spec.test(v.spec)) func.passivetext(JSON.parse(JSON.stringify(syn)), v);
+									});
+								});
+							}
+						});
+					});
+					console.log(logID, Pcount);
+					logID.forEach((v,i) => {if(v) func.syntaxadd(`tpt${i} : ( Pcount / logID ) : ${Pcount[i]} / ${v} = ${Pcount[i]/v}`);});
+					return res;
+				})("", {}, 1, "");
+			};
+			func_passive["命中"] = reg => {};
+			func_passive["回避"] = reg => {};
+			r_func["passiveCounter"] = reg => {
+				var passive_select = Object.keys(option)[els.passive_list.selectedIndex];
+				func_passive[passive_select](reg);
+			};
+			return;
+		})();
+		els.rCopy.addEventListener('click', function() {
+			els.rText.select();
+			document.execCommand('copy');
+		}, false);
+		e.result_area.appendChild(rElem.passiveCounter);
+	})();
+	(() => {
 	//timeTable
 	})();
 	func.selectchange = function() {
@@ -2389,11 +2568,14 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	result.select_list.addEventListener('change', func.selectchange, false);
 	result.select_button.addEventListener('click', function() {
 		var key = Object.keys(option),
-			val = e.search_box.value.trim().split(/\s+/),
-			reg = "";
-		val.forEach((v) => {reg += v + "|";});
-		reg = new RegExp(reg.substr(0, reg.length - 1));
-		r_func[key[parseInt(result.select_list.value)]](reg);
+			val1 = e.search_box.value.trim().split(/\s+/),
+			val2 = e.search_box_spec.value.trim().split(/\s+/),
+			reg = "", regexp = {};
+		val1.forEach((v) => {reg += v + "|";});
+		regexp.skill = new RegExp(reg.substr(0, reg.length - 1));
+		regexp.spec = new RegExp((val2[0]) ? "^" + val2[0] + "$" : val2[0]);
+		console.log(regexp);
+		r_func[key[parseInt(result.select_list.value)]](regexp);
 	}, false);
 	e.preset_select.addEventListener('change', function(ev) {
 		var o = miu$._JSON.GET.V_log_preset[ev.target[ev.target.value].textContent];
@@ -2792,7 +2974,7 @@ miu$._HTMLfunc.stylesheet = function() {
 			"height: 100%",
 			"overflow-y: auto")
 		)
-		+ css(cl + "v_search_box",
+		+ css(cl + "v_search_box, " + cl + "v_search_box_spec",
 			font,
 			tx("box-sizing: border-box",
 			"text-align: left",
@@ -2801,7 +2983,6 @@ miu$._HTMLfunc.stylesheet = function() {
 			"padding: 3px",
 			"background: rgba(0,0,0,0.5)",
 			"width: 100%")
-			
 		)
 		+ css(cl + "v_logGetTitle",
 			tx("padding: 2px 10px",
@@ -2920,7 +3101,11 @@ miu$._HTMLfunc.stylesheet = function() {
 			tx("text-align: left")
 		)
 		
-		
+		+ css(cl + "v_passive_list",
+			tx("width: 100px",
+			"height: 22px",
+			"box-sizing: content-box")
+		)
 		
 		
 	///////////////////////	
@@ -3121,7 +3306,7 @@ miu$._CREATEhtml.setlog = function(top_element, open_Button) {
 		data = new miu$._LOGdata.init();
 		if(!data.createC(e)) return false;
 		if(!data.createL(e)) return false;
-		//if(!data.createS()) return false;
+		if(!data.createS()) return false;
 		console.log(data);
 		miu$._HTMLfunc.mainWindow(top_element, open_Button, data);
 		open_Button.textContent = Scriptname + " " + Version;
