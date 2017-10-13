@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.2.1
+// @version      0.2.5
 // @description  ktstのログに色々書き加えていくスクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -759,6 +759,10 @@ miu$._GETlog.infoStatus = function(name, tST) {
 	return obj;
 };
 
+miu$._GETlog.beforetST = function(tST) {
+	return JSON.parse(JSON.stringify(tST));
+};
+
 //////要素のフィルタリング/////////////////////////////////////
 miu$._GETlog.getIndex = function(elem, name, str) {
 	str = new RegExp(str);
@@ -1052,9 +1056,10 @@ miu$._GETlog.messageTable.prototype.skillef = function(reg, msglist, tST, x, cou
 
 	//effect
 miu$._GETlog.messageTable.prototype.Status = function(reg, msglist, tST, efflist) {
-	var li = this.listResult(tST, efflist.target, msglist.sName.user, undefined, efflist.str[1], undefined, efflist.str[3], undefined);
+	var li = this.listResult(tST, efflist.target, msglist.sName.user, undefined, efflist.str[1], undefined, efflist.str[3], undefined),
+		btST = miu$._GETlog.beforetST(tST);
 	miu$._GETlog.count(tST, li.prop, li.key, efflist.target);
-	return this.pushResult(tST, efflist, msglist, li);
+	return this.pushResult(btST, efflist, msglist, li);
 };
 
 miu$._GETlog.messageTable.prototype.StatusKJ = function(reg, msglist, tST, efflist) {
@@ -1063,10 +1068,11 @@ miu$._GETlog.messageTable.prototype.StatusKJ = function(reg, msglist, tST, effli
 		key = efflist.str[1],
 		regexp = [/^(\d+)\sターンの間、/, /(\d+)\sターンに..！$/],
 		msg = [efflist.pre, efflist.str[4]],
-		turn = 0;
-	regexp.forEach((val, i) => {
-		if(val.test(msg[i])) {
-			turn = parseInt(msg[i].split(val)[1], 10);
+		turn = 0,
+		btST = miu$._GETlog.beforetST(tST);
+	regexp.forEach((v, i) => {
+		if(v.test(msg[i])) {
+			turn = parseInt(msg[i].split(v)[1], 10);
 		}
 	});
 	tST[efflist.target].per[key][1] = turn;
@@ -1075,15 +1081,16 @@ miu$._GETlog.messageTable.prototype.StatusKJ = function(reg, msglist, tST, effli
 	} else {
 		tST[efflist.target].per.Reset(key);
 	}
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, prop, undefined));
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, efflist) {
 	var cri = 0, f = new miu$._Flag.addressList(tST),
-		list = [], info = {}, func = {},
+		list = [], func = {},
 		target = efflist.target,
 		regprop = /(盾受|肩代|盾回避|Critical)/,
-		i = 1, len = efflist.rlist.length, obj;
+		i = 1, len = efflist.rlist.length, obj,
+		btST = miu$._GETlog.beforetST(tST);
 	func["盾受"] = (o) => {
 		tST[o.target].shield = o.add;
 	};
@@ -1104,7 +1111,11 @@ miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, effli
 			key = str[1],
 			li;
 		if(!key) key = "HP";
-		if(/ダメージ/.test(prop)) prop = "ダメージ";
+		if(/ダメージ/.test(prop)) {
+			prop = "ダメージ";
+			tST[msglist.sName.user].yDam = 0;
+			tST[target].hDam = 0;
+		}
 		li = this.listResult(tST, target, msglist.sName.user, add, key, undefined, prop, undefined);
 		miu$._GETlog.count(tST, li.prop, li.key, target);
 		if(key === "MHP") miu$._GETlog.statenMHP(tST, prop, msglist.sName.user, target, add, efflist.rlist[0].slv, efflist.rlist[0].type, msglist.pt, miu$._GETlog.specSplit(efflist));
@@ -1121,33 +1132,27 @@ miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, effli
 	((i, prop, e) => {
 		prop = list.find((v) => {return /奪取|強奪/.test(f.prop[f.getIndex(v.prop)][0]);});
 		if(prop) prop = f.prop[f.getIndex(prop.prop)][0];
-		e[0] = miu$._HTMLfunc.setInfo(efflist.rlist, tST, target, msglist.sName.user, efflist.response);
+		e[0] = miu$._HTMLfunc.setInfo(efflist.rlist, btST, target, msglist.sName.user, efflist.response);
 		e[1] = miu$._HTMLfunc.sethpsp(tST, target, msglist.sName.user, prop);
-		msglist.elembr[i].parentNode.insertBefore(e[0], msglist.elembr[i]);
-		msglist.elembr[i].parentNode.insertBefore(e[1], msglist.elembr[i]);
+		e.forEach(ev => {msglist.elembr[i].parentNode.insertBefore(ev, msglist.elembr[i]);});
+		list.forEach(v => {v.info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, btST), "targetStatus": miu$._GETlog.infoStatus(target, btST), "critical": cri};});
 	})(efflist.i, "", []);
-	info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(target, tST), "critical": cri};
-	if(f.prop[f.getIndex(list[0].prop)][0] === "ダメージ") {
-		tST[msglist.sName.user].yDam = 0;
-		tST[target].hDam = 0;
-	}
-	list.forEach((val) => {
-		val.info = info;
-	});
 	return list;
 };
 
 miu$._GETlog.messageTable.prototype.yhHeal = function(reg, msglist, tST, efflist) {
-	var key = (efflist.str[1] === "使う") ? "yHeal" : "hHeal";
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, key, undefined, efflist.str[2], undefined));
+	var key = (efflist.str[1] === "使う") ? "yHeal" : "hHeal",
+		btST = miu$._GETlog.beforetST(tST);
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, key, undefined, efflist.str[2], undefined));
 };
 
 miu$._GETlog.messageTable.prototype.yhDam = function(reg, msglist, tST, efflist) {
 	var key = (efflist.str[1] === "受ける") ? "hDam" : "yDam",
-		add = efflist.str[2].split(/(.\d+)/);
+		add = efflist.str[2].split(/(.\d+)/),
+		btST = miu$._GETlog.beforetST(tST);
 	add = (add.length > 1) ? parseInt(add[1], 10) : 0;
 	tST[efflist.target][key] = add;
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined));
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist) {
@@ -1156,7 +1161,8 @@ miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist
 		add = parseInt(efflist.str[3], 10),
 		prop = efflist.str[4],
 		key = Object.keys(reghentyo.keys).find((v) => { return reghentyo.keys[v].test(efflist.str[2]);}),
-		funckey = (key) ? key.match(/防御|深度/) : null;
+		funckey = (key) ? key.match(/防御|深度/) : null,
+		btST = miu$._GETlog.beforetST(tST);
 	add = (add) ? add : undefined;
 	if(funckey !== null) {
 		prop = ((fk, pr) => {
@@ -1187,74 +1193,85 @@ miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist
 			return func[fk](pr);
 		})(funckey[0], prop);
 	}
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, subkey, prop, undefined));
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, subkey, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.Renzok = function(reg, msglist, tST, efflist) {
-	var prop = (efflist.str[1] === "早く") ? "増加" : "減少";
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "連続", undefined, prop, undefined));
+	var prop = (efflist.str[1] === "早く") ? "増加" : "減少",
+		btST = miu$._GETlog.beforetST(tST);
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "連続", undefined, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.syatai = function(reg, msglist, tST, efflist) {
 	var add = parseInt(efflist.str[3], 10),
-		key = efflist.str[1];
+		key = efflist.str[1],
+		btST = miu$._GETlog.beforetST(tST);
 	tST[efflist.target][key] = add;
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined));
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.shield = function(reg, msglist, tST, efflist) {
 	var add = parseInt(efflist.str[2], 10),
 		prop = efflist.str[3],
-		sub = (prop === "減少") ? -1 : 1;
+		sub = (prop === "減少") ? -1 : 1,
+		btST = miu$._GETlog.beforetST(tST);
 	if(prop === "奪取") {
 		tST[msglist.sName.user].shield = miu$._DATAstate._update(tST[msglist.sName.user].shield, add);
 		sub = -1;
 	}
 	tST[efflist.target].shield = miu$._DATAstate._update(tST[efflist.target].shield, (add * sub));
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, "shield", undefined, prop, undefined));
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, "shield", undefined, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.nasi = function(reg, msglist, tST, efflist) {
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "効果なし", undefined));
+	var btST = miu$._GETlog.beforetST(tST);
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "効果なし", undefined));
 };
 
 miu$._GETlog.messageTable.prototype.kaihi = function(reg, msglist, tST, efflist) {
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "回避", undefined));
+	var btST = miu$._GETlog.beforetST(tST);
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "回避", undefined));
 };
 
 miu$._GETlog.messageTable.prototype.hate = function(reg, msglist, tST, efflist) {
-	var prop = (efflist.str[1] === "やすく") ? "増加" : "減少";
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "Hate", undefined, prop, undefined));
+	var prop = (efflist.str[1] === "やすく") ? "増加" : "減少",
+		btST = miu$._GETlog.beforetST(tST);
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "Hate", undefined, prop, undefined));
 };
 
 miu$._GETlog.messageTable.prototype.fuyoLv = function(reg, msglist, tST, efflist) {
+	var btST = miu$._GETlog.beforetST(tST);
 	return ((t, k, add, prop, f) => {
 		var i = (/増加/.test(prop)) ? 1 : -1;
 		if(checkObject(f[k], "Undefined")) f[k] = 0;
 		if(!miu$._Flag.fuyoSkill[k]) miu$._Flag.fuyoSkill[k] = true;
 		f[k] = miu$._DATAstate._update(f[k], add * i);
-		return this.pushResult(tST, efflist, msglist, this.listResult(tST, t, msglist.sName.user, add, "付与lv", k, prop, undefined));
+		return this.pushResult(btST, efflist, msglist, this.listResult(tST, t, msglist.sName.user, add, "付与lv", k, prop, undefined));
 	})(efflist.target, efflist.str[1], parseInt(efflist.str[2], 10), (/付加|増加/.test(efflist.str[3])) ? "増加" : "減少", tST[efflist.target].fuyoLv);
 };
 
 miu$._GETlog.messageTable.prototype.useSp = function(reg, msglist, tST, efflist) {
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, parseInt(efflist.str[1], 10), "消費SP", undefined, efflist.str[2], undefined));
+	var btST = miu$._GETlog.beforetST(tST);
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, parseInt(efflist.str[1], 10), "消費SP", undefined, efflist.str[2], undefined));
 };
 
 miu$._GETlog.messageTable.prototype.keigen = function(reg, msglist, tST, efflist) {
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "軽減率", undefined, efflist.str[2], undefined));
+	var btST = miu$._GETlog.beforetST(tST);
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "軽減率", undefined, efflist.str[2], undefined));
 };
 
 miu$._GETlog.messageTable.prototype.impact = function(reg, msglist, tST, efflist) {
+	var btST = miu$._GETlog.beforetST(tST);
 	tST[efflist.target].Impact++;
-	return this.pushResult(tST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, undefined, "Impact"));
+	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, undefined, "Impact"));
 };
 
 miu$._GETlog.messageTable.prototype.goei = function(reg, msglist, tST, efflist) {
+	var btST = miu$._GETlog.beforetST(tST);
 	return ((t,u,add) => {
 		if(typeof tST[u].goei[t] === "undefined") tST[u].goei[t] = 0;
 		tST[u].goei[t] = add;
-		return this.pushResult(tST, efflist, msglist, this.listResult(tST, t, u, add, "護衛", undefined, undefined, undefined));
+		return this.pushResult(btST, efflist, msglist, this.listResult(tST, t, u, add, "護衛", undefined, undefined, undefined));
 	})(efflist.target, msglist.sName.user, parseInt(efflist.str[1], 10));
 };
 
@@ -1314,7 +1331,8 @@ miu$._GETlog.messageTable.prototype.Mc = function(reg, msglist, tST, x, result, 
 miu$._GETlog.messageTable.prototype.Md = function(reg, msglist, tST, x, result, response) {
 	var dam = msglist.msg[x].split(reg.action.Md),
 		elem = miu$._GETlog.splitGetNode(msglist.elem.parentNode.children, 'className', 'BAA\\d+')[0],
-		res = [{},[{},{}]], func = {}, flag = new miu$._Flag.addressList(tST);
+		res = [{},[{},{}]], func = {}, flag = new miu$._Flag.addressList(tST),
+		btST = miu$._GETlog.beforetST(tST);
 	func.i_t = (a,b) => {return flag[a][flag.getIndex(b[a])][0];};
 	elem = miu$._GETlog.splitGetNode(elem[0].children, 'className', 'F5')[0];
 	elem = elem[0].textContent.split(reg.nTrim);
@@ -1323,16 +1341,14 @@ miu$._GETlog.messageTable.prototype.Md = function(reg, msglist, tST, x, result, 
 	res[1][0] = this.listResult(tST, msglist.sName.user, msglist.sName.user, parseInt(dam[1], 10), "HP", undefined, "ダメージ", undefined);
 	res[1][1] = this.listResult(tST, msglist.sName.user, msglist.sName.user, parseInt(dam[2], 10), "MHP", undefined, "減少", undefined);
 	miu$._GETlog.statehpsp(func.i_t("prop", res[1][0]), msglist.sName.user, msglist.sName.user, func.i_t("key", res[1][0]), res[1][0].add, tST);
-	res[1][0].info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST)};
 	tST[msglist.sName.user].state.nMHPdoku(res[1][1].add);
 	miu$._GETlog.statehpsp(func.i_t("prop", res[1][1]), msglist.sName.user, msglist.sName.user, func.i_t("key", res[1][1]), res[1][1].add, tST);
-	res[1][1].info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST)};
+	res[1].forEach(v => {v.info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, btST), "targetStatus": miu$._GETlog.infoStatus(msglist.sName.user, btST)};});
 	((e) => {
 		var t = response.substr(0, response.length - 1) + 1;
 		e[0] = miu$._HTMLfunc.setInfo(res, tST, msglist.sName.user, msglist.sName.user, t);
 		e[1] = miu$._HTMLfunc.sethpsp(tST, msglist.sName.user, msglist.sName.user, "");
-		msglist.elem.appendChild(e[0]);
-		msglist.elem.appendChild(e[1]);
+		e.forEach(v => {msglist.elem.appendChild(v);});
 	})([]);
 	return res;
 };
@@ -2497,23 +2513,25 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 				data.log.forEach(v => {func_passive.loop(v.log, v.pt);});
 				console.log(skill);
 				els.rText.value = ((syn, obj, bool, res) => {
-					var func = {}, logID = [], Pcount = [];
+					var func = {}, countID = "thpC", Counter = {};
+					["thpC", "tptC"].forEach(a => {Counter[a] = {"logID": [], "Pcount": []};});
 					syn = "Auser,Aid,Aspec,target,tpt,tHP,tMHP,logID,Pid,Puser,Pcount";
 					func.syntaxadd = v => {res += v + "\n";};
 					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
 					func.logtext = o => {func.syntaxadd(Object.keys(o).map((k) => {return (o[k] === true) ? undefined : o[k];}).join(","));};
 					func.passivetext = (o, v) => {
 						var h = v.heal.info.targetStatus,
+							num = {"thpC": Math.ceil(h.state.HP / h.state.MHP * 10), "tptC": v.pt},
 							tname = flag[flag.checkkey("target")][flag.getIndex(v.heal.target)][0].split(/\s:\s/)[1];
-						logID[v.pt] = (logID[v.pt]) ? logID[v.pt] + 1 : 1;
+						Object.keys(num).forEach((id) => {Counter[id].logID[num[id]] = (Counter[id].logID[num[id]]) ? Counter[id].logID[num[id]] + 1 : 1;});
 						func.addString(o, "Auser,Aid,Aspec,target", v.skill.user, v.skill.id, v.spec, tname);
-						func.addString(o, "tpt,tHP,tMHP,logID", v.pt, h.state.HP, h.state.MHP, logID[v.pt]);
+						func.addString(o, "tpt,tHP,tMHP,logID", v.pt, h.state.HP, h.state.MHP, Counter[countID].logID[num[countID]]);
 						if(v.passive.length) {
-							v.passive.forEach((p) => {
+							v.passive.forEach(p => {
 								(o => {
 									if(reg.skill.test(p.id)) {
-										Pcount[v.pt] = (Pcount[v.pt]) ? Pcount[v.pt] + 1 : 1;
-										func.addString(o, "Pid,Puser,Pcount", p.id, p.user, Pcount[v.pt]);
+										Object.keys(num).forEach((id) => {Counter[id].Pcount[num[id]] = (Counter[id].Pcount[num[id]]) ? Counter[id].Pcount[num[id]] + 1 : 1;});
+										func.addString(o, "Pid,Puser,Pcount", p.id, p.user, Counter[countID].Pcount[num[countID]]);
 									}
 									func.logtext(o);
 								})(JSON.parse(JSON.stringify(o)));
@@ -2526,7 +2544,7 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 					syn = JSON.parse(JSON.stringify(obj));
 					func.syntaxadd(Object.keys(obj).join(","));
 					data.acterTable.forEach((v) => {
-						v.forEach((name) => {
+						v.forEach(name => {
 							var s = skill[name];
 							if(s) {
 								Object.keys(s).forEach((skillname) => {
@@ -2537,8 +2555,8 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 							}
 						});
 					});
-					console.log(logID, Pcount);
-					logID.forEach((v,i) => {if(v) func.syntaxadd(`tpt${i} : ( Pcount / logID ) : ${Pcount[i]} / ${v} = ${Pcount[i]/v}`);});
+					console.log(Counter[countID].logID, Counter[countID].Pcount);
+					Object.keys(Counter[countID].logID).forEach((v,i) => {console.log(v,i);if(v) func.syntaxadd(`${countID}${v} : ( Pcount / logID ) : ${Counter[countID].Pcount[v]} / ${Counter[countID].logID[v]} = ${Counter[countID].Pcount[v]/Counter[countID].logID[v]}`);});
 					return res;
 				})("", {}, 1, "");
 			};
