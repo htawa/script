@@ -7,8 +7,8 @@
 // @match        http://lisge.com/kk/k/*
 // @match        http://lisge.com/kk/tb/*
 // @match        http://lisge.com/kk/br/*
-// @updataURL    https://raw.githubusercontent.com/htawa/script/master/specterX_ktst.user.js
-// @downloadURL  https://raw.githubusercontent.com/htawa/script/master/specterX_ktst.user.js
+// @updataURL    https://github.com/htawa/script/raw/master/specterX_ktst.user.js
+// @downloadURL  https://github.com/htawa/script/raw/master/specterX_ktst.user.js
 // @grant        none
 // ==/UserScript==
 
@@ -20,7 +20,9 @@
 ※取得していないログ
 	（キャラ）の（スキル）が消滅！
 	離脱メッセージ
-
+	
+※取得出来ていないログ
+	なにかあれば
 */
 
 (function(){
