@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         specterX ktst
+// @name         specterX_ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.2.5
-// @description  ktstのログに色々書き加えていくスクリプト。
+// @version      0.3.0
+// @description  ktstのログ抽出スクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
 // @match        http://lisge.com/kk/tb/*
@@ -13,91 +13,37 @@
 // ==/UserScript==
 
 /*
-
 ※注釈
 ※同名キャラがいる場合は使えません。
 ※同一キャラの同名スキルは判別できません。
+
 ※取得していないログ
 	（キャラ）の（スキル）が消滅！
-	行動終了時の(なんとかかんとかが消滅)
 	離脱メッセージ
-
-※取得出来ていないログ
-	*なんかあれば
-	*スキルの語尾に（にゃー）とかついてるとダメかも
-
-※正確に取得出来ないスキル
-	ソルプレッサ
-
-※表示していない効果
-	盾
 
 */
 
-
 (function(){
 "use strict";
-var miu$ = {};
-const Scriptname = "specterX",
-	Version = "ktst",
-	Errtitle = `ERROR ${Scriptname} ${Version} : `,
-	Autoload = false,
+const miu$ = {},
+	ScriptName = "SpecterX_ktst",
+	Version = "0.3.0",
+	doc = document,
 	Bit = 32,
 	checkObject = function(obj, str) {return (Object.prototype.toString.call(obj) === "[object " + str + "]");},
-	//css
-	zIndex = 156,
-	Borderline = "solid 1px rgb(0,0,0)",
-	//view
-	V_log_damage = {"key": [[0,1,2,3,13,31]]
-		, "subkey": [[8]]
-		, "prop": [[0,3,4,5,6,7,8,9,16]]
-		, "other": [[9]]
-		, "syntax": "sturn,sid,slv,stype,uRetu,uSyat,upt,uchar,ustHP,ustMHP,ustSP,ustMSP,ustAT,ustMAT,u%AT,u%MAT,uH祝,uH衰,sspec,tRetu,tSyat,tpt,tchar,tstDF,tstMDF,t%DF,t%MDF,tH祝,tH衰,skey,ssubkey,sprop,sother,uyDam,thDam,scri,sadd"
-		, "search": ""
-	},
-	V_log_renzoku = {"key": [[9,11,31]]
-		, "subkey": [[8]]
-		, "prop": [[3,4,5,6,7,8,9,16]]
-		, "other": [[1,2,9]]
-		, "syntax": "sturn,snA,sid,slv,stype,upt,uchar,ustSPD,uRnzk,u%SPD,sspec,tpt,tchar,tstSPD,skey,ssubkey,sprop,sother"
-		, "search": ""
-	},
-	V_log_healing = {"key": [[8,13,16,17,31]]
-		, "subkey": [[8]]
-		, "prop": [[0,1,3,4,5,6,7,8,9,16]]
-		, "other": [[9]]
-		, "syntax": "sturn,sid,slv,stype,upt,uchar,ustHEAL,u%HEAL,uH毒,sspec,tpt,tchar,tstMHP,tstMSP,tH毒,skey,ssubkey,sprop,sother,uyHeal,thHeal,sadd"
-		, "search": ""
-	},
-	V_log_status = {"key": [[0,1,2,3,4,5,6,7,8,9,10,12,14,31]]
-		, "subkey": [[8]]
-		, "prop": [[3,4,5,6,7,8,9,16]]
-		, "other": [[9]]
-		, "syntax": "sturn,sid,slv,stype,upt,uchar,sspec,tpt,tchar,skey,ssubkey,sprop,sother"
-		, "search": ""
-	};
-console.log(Errtitle);
+	nonnnnono = 0;
 
-
-miu$._GetStatus = {};
-
-//////////////////////////////////////////////////////////////
-// skill
-//
-
-miu$._Skill = {};
 
 //////////////////////////////////////////////////////////////
 // webstorage
 //
-
 miu$._JSON = {};
 
 miu$._JSON.GET = {};
 
 miu$._JSON.check = function(type) {
 	try {
-		var storage = window[type],
+		const storage = window[type],
 			x = "__storage_test__";
 		storage.setItem(x,x);
 		storage.removeItem(x);
@@ -108,7 +54,7 @@ miu$._JSON.check = function(type) {
 };
 
 miu$._JSON.start = function(func) {
-	var type = "localStorage";
+	const type = "localStorage";
 	if(miu$._JSON.check(type)) {
 		func(window[type]);
 	} else {
@@ -117,28 +63,28 @@ miu$._JSON.start = function(func) {
 };
 
 miu$._JSON.save = function() {
-	miu$._JSON.start((ls) => {
-		ls.setItem("specterX_ktst", JSON.stringify(miu$._JSON.GET));
+	miu$._JSON.start(ls => {
+		ls.setItem(ScriptName, JSON.stringify(miu$._JSON.GET));
 	});
 };
 
 miu$._JSON.remove = function() {
-	miu$._JSON.start((ls) => {
-		ls.removeItem("specterX_ktst");
+	miu$._JSON.start(ls => {
+		ls.removeItem(ScriptName);
 	});
 };
 
 miu$._JSON.set = function() {
-	miu$._JSON.start((ls) => {
-		miu$._JSON.GET = ls.getItem("specterX_ktst");
-		if(!miu$._JSON.GET) {
+	miu$._JSON.start(ls => {
+		miu$._JSON.GET = ls.getItem(ScriptName);
+		if(!miu$._JSON.GET) {//webstorageが空の時
 			miu$._JSON.GET = {};
-			miu$._JSON.GET.V_log_preset = {"ダメージ": V_log_damage, "連続": V_log_renzoku, "回復": V_log_healing, "ステータス": V_log_status};
+			miu$._JSON.GET.V_log_preset = {};
 			miu$._JSON.save();
 		} else {
 			miu$._JSON.GET = JSON.parse(miu$._JSON.GET);
-			if(!Object.keys(miu$._JSON.GET.V_log_preset).length) {
-				miu$._JSON.GET.V_log_preset = {"ダメージ": V_log_damage, "連続": V_log_renzoku, "回復": V_log_healing, "ステータス": V_log_status};
+			if(!Object.keys(miu$._JSON.GET.V_log_preset).length) {//presetが空の時
+				miu$._JSON.GET.V_log_preset = {};
 				miu$._JSON.save();
 			}
 		}
@@ -146,20 +92,17 @@ miu$._JSON.set = function() {
 };
 
 miu$._JSON.log = function() {
-	miu$._JSON.start((ls) => {
-		console.log(ls);
-	});
+	miu$._JSON.start(ls => {console.log(ls);});
 };
 
 //////////////////////////////////////////////////////////////
 // flag
 //
-
 miu$._Flag = {};
 
 miu$._Flag.SET = function() {
-	var array = [], i;
-	for(i = 0; i < Bit; ++i) array[i] = 1 << i;
+	const array = [];
+	for(let i = 0; i < Bit; ++i) array[i] = 1 << i;
 	return array;
 };
 
@@ -176,8 +119,8 @@ miu$._Flag.addressList = function(d) {
 };
 
 miu$._Flag.addressList.prototype.characterlist = function(d) {
-	var res = [];
-	Object.keys(d).forEach((v) => {res.push([d[v].Eno + " : " + v, d[v].Eno + " : " + v]);});
+	const res = [];
+	Object.keys(d).forEach(v => {res.push([d[v].Eno + " : " + v, d[v].Eno + " : " + v]);});
 	res.push([undefined, "- なし"]);
 	return res;
 };
@@ -230,53 +173,59 @@ miu$._Flag.addressList.prototype.subkeylist = function() {
 	res[6] = ["呪", "呪縛"];
 	res[7] = ["魅", "魅了"];
 	res[8] = [undefined, "- なし"];
-	Object.keys(miu$._Flag.fuyoSkill).forEach((v) => {res.push([v, v]);});
+	Object.keys(miu$._Flag.fuyoSkill).forEach(v => {res.push([v, v]);});
 	return res;
 };
 
 miu$._Flag.addressList.prototype.proplist = function() {
 	var res = [];
-	res[0] = ["ダメージ", "ダメージ"];
-	res[1] = ["回復", "回復"];
-	res[2] = ["回避", "回避"];
-	res[3] = ["効果なし", "効果なし"];
-	res[4] = ["増加", "増加"];
-	res[5] = ["減少", "減少"];
-	res[6] = ["上昇", "上昇"];
-	res[7] = ["低下", "低下"];
-	res[8] = ["奪取", "奪取"];
-	res[9] = ["強奪", "強奪"];
-	res[10] = ["強化", "強化"];
-	res[11] = ["弱化", "弱化"];
-	res[12] = ["追加", "変調追加"];
-	res[13] = ["軽減", "変調軽減"];
-	res[14] = ["抵抗", "変調抵抗"];
-	res[15] = ["変調防御", "変調防御"];
-	res[16] = [undefined, "- なし"];
+	res[0] = ["物理ダメージ", "物撃"];
+	res[1] = ["魔法ダメージ", "魔撃"];
+	res[2] = ["物魔ダメージ", "物魔撃"];
+	res[3] = ["変調ダメージ", "変調ダメ"];
+	res[4] = ["回復", "回復"];
+	res[5] = ["回避", "回避"];
+	res[6] = ["効果なし", "効果なし"];
+	res[7] = ["増加", "増加"];
+	res[8] = ["減少", "減少"];
+	res[9] = ["上昇", "上昇"];
+	res[10] = ["低下", "低下"];
+	res[11] = ["奪取", "奪取"];
+	res[12] = ["強奪", "強奪"];
+	res[13] = ["強化", "強化"];
+	res[14] = ["弱化", "弱化"];
+	res[15] = ["追加", "変調追加"];
+	res[16] = ["軽減", "変調軽減"];
+	res[17] = ["抵抗", "変調抵抗"];
+	res[18] = ["変調防御", "変調防御"];
+	res[19] = [undefined, "- なし"];
 	return res;
 };
 
 miu$._Flag.addressList.prototype.otherlist = function() {
 	var res = [];
 	res[0] = ["スキル説明", "スキル説明"];
-	res[1] = ["TstartEnd", "T開始時後"];
-	res[2] = ["ActionEnd", "An行動後"];
-	res[3] = ["ATurnEnd", "Aturn行動後"];
-	res[4] = ["Impact", "Impact"];
-	res[5] = ["Critical", "critical"];
-	res[6] = ["盾回避", "盾回避"];
-	res[7] = ["盾受", "盾受"];
-	res[8] = ["護衛", "護衛(肩代)"];
-	res[9] = [undefined, "- なし"];
+	res[1] = ["TstartState", "T開始State"];
+	res[2] = ["TstartEnd", "T開始時後"];
+	res[3] = ["nTag", "▼An行動"];
+	res[4] = ["AnEnd", "▼An行動後"];
+	res[5] = ["AturnEnd", "A行動終了時"];
+	res[6] = ["Impact", "Impact"];
+	res[7] = ["Critical", "critical"];
+	res[8] = ["盾回避", "盾回避"];
+	res[9] = ["盾受", "盾受"];
+	res[10] = ["護衛", "護衛(肩代)"];
+	res[11] = [undefined, "- なし"];
 	return res;
 };
 
 miu$._Flag.addressList.prototype.keysIndex = function(k, s, index) {
-	return this.setIndex(((i,len,arr) => {
-		for(i = 0; i < len; ++i) if(arr[i][index] === s) return i;
+	return this.setIndex((arr => {
+		const len = arr.length;
+		for(let i = 0; i < len; ++i) if(arr[i][index] === s) return i;
 		console.log("error","[" + k + " : " + s + "]が不一致。");
 		return 0;
-	})(0, this[k].length, this[k]));
+	})(this[k]));
 };
 
 miu$._Flag.addressList.prototype.setIndex = function(n) {
@@ -314,73 +263,55 @@ miu$._Flag.addressList.prototype.getcharacterEno = function(mod) {
 //////////////////////////////////////////////////////////////
 // state
 //
-
 miu$._DATAstate = {};
 
-miu$._DATAstate.PC = function(name, eno, ptid, mhp, msp, psp, gensui, i) {
+miu$._DATAstate.PC = function(name, eno, mhp, msp, ptid, i) {
 	this.Eno = eno;
 	this.Name = name;
 	this.PTid = ptid;
-	this.startMHP = mhp;
-	this.startMSP = msp;
-	this.PSP = psp;
-	this["減衰率"] = gensui;
-	this.status = new miu$._DATAstate.stA(5,5,5,5,5,5);
-	this.statusBt = new miu$._DATAstate.stC();
 	this.flagindex = i;
-	this.skill = {"A": {}, "P": {}};
+	this.State = new miu$._DATAstate.PC_state(mhp, msp);
 };
 
-miu$._DATAstate.stA = function(sa, sb, sc, sd, se, sf) {
-	this["ST"] = sa;
-	this["AG"] = sb;
-	this["DX"] = sc;
-	this["IN"] = sd;
-	this["VT"] = se;
-	this["MN"] = sf;
+miu$._DATAstate.PC_state = function(mhp, msp) {
+	this.MHP = mhp;
+	this.MSP = msp;
 };
 
-miu$._DATAstate.stB = function(mhp, msp, eno, ptid) {
+miu$._DATAstate.stB = function(eno, ptid, mhp, msp) {
 	this.Eno = eno;
 	this.PTid = ptid;
 	this.yDam = 0;
 	this.hDam = 0;
-	this.yHeal = 0;
-	this.hHeal = 0;
-	this["連続"] = 0;
+	//this.yHeal = 0;
+	//this.hHeal = 0;
+	//this["連続"] = 0;
 	this.Impact = 0;
-	this.state = new miu$._DATAstate.stBstate(mhp, msp);
-	this["変調深度"] = new miu$._DATAstate.hentyo();
-	this["変調防御"] = new miu$._DATAstate.hentyo();
-	this.per = new miu$._DATAstate.stBper();
-	this.shield = 0;
+	//this.shield = 0;
 	this.fuyoLv = {};
 	this.goei = {};
 	this["隊列"] = 0;
-	this["射程"] = 0;
+	this["変調深度"] = new miu$._DATAstate.hentyo();
+	this["変調防御"] = new miu$._DATAstate.hentyo();
+	this.per = new miu$._DATAstate.stB_per();
+	this.state = new miu$._DATAstate.stB_state(mhp, msp);
 	this.stateCount = new miu$._DATAstate.count();
 };
 
-miu$._DATAstate.stBstate = function(mhp, msp) {
+miu$._DATAstate.stB_state = function(mhp, msp) {
 	this.HP = mhp;
 	this.MHP = mhp;
 	this.nMHP = mhp;
 	this.SP = msp;
 	this.MSP = msp;
-	this.AT = 0;
-	this.MAT = 0;
-	this.DF = 0;
-	this.MDF = 0;
-	this.EVA = 0;
-	this.MEVA = 0;
-	this.HIT = 0;
-	this.MHIT = 0;
-	this.SPD = 0;
-	this.CRI = 0;
-	this.HEAL = 0;
+	this["消費SP"] = 0;
 };
 
-miu$._DATAstate.stBper = function() {
+miu$._DATAstate.stB_state.prototype.nMHPdoku = function(add) {
+	this.nMHP -= Math.floor(add / 2);
+};
+
+miu$._DATAstate.stB_per = function() {
 	this.AT = [0, 0]; //[%, turn]
 	this.MAT = [0, 0];
 	this.DF = [0, 0];
@@ -394,25 +325,21 @@ miu$._DATAstate.stBper = function() {
 	this.HEAL = [0, 0];
 };
 
-miu$._DATAstate.hentyo = function() {
-	this["毒"] = 0;
-	this["衰"] = 0;
-	this["痺"] = 0;
-	this["魅"] = 0;
-	this["呪"] = 0;
-	this["乱"] = 0;
-	this["祝"] = 0;
-	this["護"] = 0;
+miu$._DATAstate.stB_per.prototype.Reset = function(key) {
+	this[key][0] = 0;
 };
 
-miu$._DATAstate.stC = function() {
-	Object.keys(new miu$._DATAstate.St_ofTime()).forEach((v) => {
-		this[v] = 0;
+miu$._DATAstate.stB_per.prototype.Aend = function() {
+	Object.keys(this).forEach(key => {
+		if(this[key][0]) {
+			--this[key][1];
+			if(!this[key][1]) this.Reset(key);
+		}
 	});
 };
 
 miu$._DATAstate.count = function() {
-	this.HP = [0, 0]; //[js, ds]
+	this.HP = [0, 0]; //[上昇低下, 奪取]
 	this.MHP = [0, 0];
 	this.SP = [0, 0];
 	this.MSP = [0, 0];
@@ -427,6 +354,18 @@ miu$._DATAstate.count = function() {
 	this.SPD = [0, 0];
 	this.CRI = [0, 0];
 	this.HEAL = [0, 0];
+	this["消費SP"] = [0, 0];
+};
+
+miu$._DATAstate.hentyo = function() {
+	this["毒"] = 0;
+	this["衰"] = 0;
+	this["痺"] = 0;
+	this["魅"] = 0;
+	this["呪"] = 0;
+	this["乱"] = 0;
+	this["祝"] = 0;
+	this["護"] = 0;
 };
 
 miu$._DATAstate._update = function(num, add) {
@@ -435,63 +374,9 @@ miu$._DATAstate._update = function(num, add) {
 	return num;
 };
 
-miu$._DATAstate.stBstate.prototype.nMHPdoku = function(add) {
-	this.nMHP -= Math.floor(add / 2);
-};
-
-miu$._DATAstate.stBper.prototype.Reset = function(key) {
-	this[key][0] = 0;
-};
-
-miu$._DATAstate.stBper.prototype.Aend = function() {
-	Object.keys(this).forEach((key) => {
-		if(this[key][0]) {
-			--this[key][1];
-			if(!this[key][1]) this.Reset(key);
-		}
-	});
-};
-
-miu$._DATAstate.hentyo.prototype.Aend = function() {
-	Object.keys(this).forEach((key) => {
-		if(this[key] > 0) --this[key];
-	});
-};
-
-miu$._DATAstate.PC.prototype.stBtReset = function() {
-	var list = new miu$._DATAstate.St_ofTime(),
-		st = {};
-	Object.keys(this.status).forEach((key) => {
-		st[key] = (this.status[key] >= 1) ? Math.max(Math.floor(Math.pow(this.status[key] - 1, 1.66) / 10 * this["減衰率"] + 1.005), 2) : 0;
-	});
-	Object.keys(this.statusBt).forEach((key) => {
-		var a = Object.keys(st).reduce((pre, v) => {
-			return st[v] * list[key][v] + pre;
-		}, 0);
-		this.statusBt[key] = (a + list[key]["固定値"]) * list[key]["倍率"];
-	});
-};
-
-miu$._DATAstate.St_ofTime = function() {
-	this.MHP = {"ST": 4, "AG": 1, "DX": 2, "IN": 1, "VT": 8, "MN": 2, "固定値": 120, "倍率": 12};
-	this.MSP = {"ST": 1, "AG": 1, "DX": 3, "IN": 4, "VT": 2, "MN": 7, "固定値": 100, "倍率": 1};
-	this.AT = {"ST": 12, "AG": 0, "DX": 6, "IN": 0, "VT": 0, "MN": 0, "固定値": 100, "倍率": 1};
-	this.MAT = {"ST": 0, "AG": 0, "DX": 0, "IN": 12, "VT": 0, "MN": 6, "固定値": 100, "倍率": 1};
-	this.DF = {"ST": 5, "AG": 0, "DX": 0, "IN": 0, "VT": 10, "MN": 3, "固定値": 100, "倍率": 1};
-	this.MDF = {"ST": 2, "AG": 0, "DX": 0, "IN": 10, "VT": 2, "MN": 4, "固定値": 100, "倍率": 1};
-	this.HIT = {"ST": 1, "AG": 4, "DX": 10, "IN": 0, "VT": 3, "MN": 0, "固定値": 100, "倍率": 1};
-	this.MHIT = {"ST": 0, "AG": 0, "DX": 0, "IN": 0, "VT": 0, "MN": 0, "固定値": 100, "倍率": 1};
-	this.EVA = {"ST": 1, "AG": 11, "DX": 2, "IN": 2, "VT": 2, "MN": 0, "固定値": 100, "倍率": 1};
-	this.MEVA = {"ST": 1, "AG": 8, "DX": 1, "IN": 3, "VT": 1, "MN": 4, "固定値": 100, "倍率": 1};
-	this.SPD = {"ST": 3, "AG": 11, "DX": 0, "IN": 2, "VT": 1, "MN": 1, "固定値": 100, "倍率": 1};
-	this.CRI = {"ST": 0, "AG": 0, "DX": 0, "IN": 0, "VT": 0, "MN": 0, "固定値": 100, "倍率": 1};
-	this.HEAL = {"ST": 1, "AG": 0, "DX": 3, "IN": 2, "VT": 6, "MN": 6, "固定値": 100, "倍率": 1};
-};
-
 //////////////////////////////////////////////////////////////
 // regexp
 //
-
 miu$._REG = {};
 
 miu$._REG.hentyo = function() {
@@ -509,24 +394,24 @@ miu$._REG.script = function(RegPCstr) {
 
 miu$._REG.action = function(RegPCstr) {
 	this.L = new RegExp("(" + RegPCstr + ")のリンクスキルが発動！！$");
-	this.n = new RegExp("▼(" + RegPCstr + ")の(行動|連続行動)！\\((\\d+)\\)(.*)");
-	this.tEnd = new RegExp("^.（\\s.*\\s）$");
+	this.n = new RegExp("^▼(" + RegPCstr + ")の(行動|連続行動)！\\((\\d+)\\)(.*)");
+	this.tEnd = new RegExp("^　（\\s(" + RegPCstr + ")の(.*)\\s）$");
 	this.P = new RegExp("(" + RegPCstr + ")の(.+)$");
-	this.Mc = new RegExp("連続行動がキャンセル！！$");
+	//this.Mc = new RegExp("連続行動がキャンセル！！$");
 	this.Md = new RegExp("猛毒により\\s(\\d+)\\sのダメージ！MHPが\\s(\\d+)\\s減少！$");
 };
 
 miu$._REG.damage = function(RegPCstr) {
 	this.trimE = new RegExp("(" + RegPCstr + ")(の|は|に|から|には)(.*)?$");
-	this.Critical = new RegExp("(Critical Hit!!)$");
-	this.Tate = new RegExp("盾により(" + RegPCstr + ")への攻撃ダメージが無効化！（盾：(\\d+)→(\\d+)）$");
+	this.Critical = new RegExp("(Critical\\sHit!!)$");
+	//this.Tate = new RegExp("盾により(" + RegPCstr + ")への攻撃ダメージが無効化！（盾：(\\d+)→(\\d+)）$");
 	this.Kata = new RegExp("(" + RegPCstr + ")への攻撃を(" + RegPCstr + ")が庇った！$");
-	this.TateKaihi = new RegExp("盾回避！$");
-	this.skillef = new RegExp("^([自|味|敵].?)(\\d+)?\\:(.*)！$");
+	//this.TateKaihi = new RegExp("盾回避！$");
+	this.skillef = new RegExp("^([自|味|敵|他]?.?)(\\d+)?\\:(.*)！$");
 };
 
 miu$._REG.effect = function() {
-	var str = "増加|減少|上昇|低下|奪取|強奪|回復|ダメージ";
+	var str = "増加|減少|上昇|低下|奪取|強奪|回復|..ダメージ";
 	this.Status = new RegExp("^(.?AT|.?DF|.?HIT|.?EVA|SPD|CRI|HEAL)(が|を)(.+)！$");
 	this.StatusKJ = new RegExp("^\\s*(.?AT|.?DF|.?HIT|.?EVA|SPD|CRI|HEAL)(\\d+)％(強化|弱化)");
 	this.StatusHS = new RegExp("^(M?HP|M?SP)?(が|を|に)?\\s*(\\d+)\\s*の?(" + str + ")！\\s*(.+?！)?$");
@@ -534,9 +419,9 @@ miu$._REG.effect = function() {
 	this.yhDam = new RegExp("^次に(受ける|与える)攻撃ダメージへの補正が\\s*");
 	this.Hentyo = new RegExp("^(猛毒|衰弱|麻痺|魅了|呪縛|混乱|祝福|加護)(を|に|への防御効果.|特性が|耐性が|深度が|深度を)(\\d*)(.*)！$");
 	this.Renzok = new RegExp("次の連続行動が(早く|遅く)なったかも！$");
-	this.syatai = new RegExp("^(射程|隊列)(が)(\\d+).*になった！$");
-	this.shield = new RegExp("盾(が|を)\\s*(\\d*)\\s*(.+)！$");
-	this.nasi = new RegExp("何の効果もなかった！$");
+	//this.syatai = new RegExp("^(射程|隊列)(が)(\\d+).*になった！$");
+	//this.shield = new RegExp("盾(が|を)\\s*(\\d*)\\s*(.+)！$");
+	//this.nasi = new RegExp("何の効果もなかった！$");
 	this.kaihi = new RegExp("攻撃を回避！$");
 	this.hate = new RegExp("狙われ(にくく|やすく)なった！$");
 	this.fuyoLv = new RegExp("^\\s*(.+)LVが?\\s\\s?(\\d+)\\s\\sが?(.+)！$");
@@ -544,7 +429,7 @@ miu$._REG.effect = function() {
 	this.keigen = new RegExp("(受ける)HP減少/奪取効果が(.+)！$");
 	this.impact = new RegExp("衝撃でよろめいた！$");
 	this.goei = new RegExp("対する攻撃を\\s*(\\d+)\\s*回護衛！");
-	this.syometu = new RegExp("が消滅！$");
+	//this.syometu = new RegExp("が消滅！$");
 };
 
 miu$._REG.checker = function() {
@@ -556,29 +441,26 @@ miu$._REG.checker = function() {
 //////////////////////////////////////////////////////////////
 // data
 //
-
 miu$._LOGdata = {};
 
 miu$._LOGdata.init = function() {
 	this.character = {};
 	this.acterTable = [];
-	this.log = [];
+	this.logdata = [];
 };
 
-miu$._LOGdata.init.prototype.createC = function(elem) {
-	var ch = new miu$._GETlog.characterTable(elem, 0),
-		tag = new miu$._GETlog.indexlist(),
+miu$._LOGdata.init.prototype.createC = function(e) {
+	const ch = new miu$._GETlog.characterTable(e[0]),
+		tag = miu$._GETlog.indexlist,
 		resultacter = {},
-		resultTable = [],
-		membercount = 0;
-	ch.character.forEach((val, i) => {
-		var ptid = i;
-		resultTable[ptid] = [];
-		val.forEach((val, i) => {
+		resultTable = [];
+	let membercount = 0;
+	ch.character.forEach((v,i) => {
+		resultTable[i] = [];
+		v.forEach((v,j) => {
 			++membercount;
-			resultacter[val[tag.name]] = new miu$._DATAstate.PC(val[tag.name], val[tag.eno], ptid, val[tag.mhp], val[tag.msp], val[tag.psp], 1.00, membercount);
-			resultacter[val[tag.name]].stBtReset();
-			resultTable[ptid][i] = val[tag.name];
+			resultacter[v[tag.name]] = new miu$._DATAstate.PC(v[tag.name], v[tag.eno], v[tag.mhp], v[tag.msp], i, membercount);
+			resultTable[i][j] = v[tag.name];
 		});
 	});
 	this.character = resultacter;
@@ -586,237 +468,137 @@ miu$._LOGdata.init.prototype.createC = function(elem) {
 	return true;
 };
 
-miu$._LOGdata.init.prototype.createL = function(elem) {
-	var ch = new miu$._GETlog.characterTable(elem, 0),
-		reg = new miu$._REG.checker(),
-		tST = {},
-		result = [],
-		RegPCstr = "",
-		msg, i, pt;
-	Object.keys(this.character).forEach((name) => {
-		tST[name] = new miu$._DATAstate.stB(this.character[name].startMHP, this.character[name].startMSP, this.character[name].Eno, this.character[name].PTid);
-		RegPCstr += miu$._LOGdata.regstr(name, reg) + "|";
-	});
-	RegPCstr = RegPCstr.substr(0, RegPCstr.length - 1);
-	reg = new miu$._REG.script(RegPCstr);
-	for(i = 0; (i < elem.length) && ch.character.length; ++i) {
-		//console.log(i + " turn : ");
-		ch = new miu$._GETlog.characterTable(elem, i);
-		ch.character.forEach((v) => {
-			v.forEach((v) => {
-				tST[v[1]]["変調深度"] = v[2];
+miu$._LOGdata.init.prototype.createL = function(e) {
+	const state = new miu$._GETlog.turnMessageTable(),
+		result = [];
+	state.Reg = (RegPCstr => {
+		const reg = new miu$._REG.checker();
+		Object.keys(this.character).forEach(name => {
+			state.stateinit(this.character[name], name);
+			["HP", "SP"].forEach(v => {
+				state.tST[name].state["M" + v] = this.character[name].State["M" + v];
+				state.tST[name].state[v] = this.character[name].State["M" + v];
 			});
+			state.tST[name].state.nMHP = this.character[name].State.MHP;
+			RegPCstr += miu$._LOGdata.regstr(name, reg) + "|";
 		});
-		pt = miu$._GETlog.NoP(ch.character);
-		msg = new miu$._GETlog.messageTable(elem, i, reg, tST, pt);
-		result[i] = {"pt": pt, "log": msg.msg};
-	}
-	i = result.findIndex((v) => {return v.pt.some((v) => {return !v;});});
-	if(i > 0) result.splice(i, result.length - i);
-	this.log = result;
+		RegPCstr = RegPCstr.substr(0, RegPCstr.length - 1);
+		return new miu$._REG.script(RegPCstr);
+	})("");
+	e.forEach((v,i) => {
+		const ch = new miu$._GETlog.characterTable(v);
+		const pt = (() => {
+			const a = [];
+			ch.character.forEach(v => {
+				a.push(v.length);
+				v.forEach(v => {
+					Object.keys(state.tST[v[1]]["変調深度"]).forEach(h => {state.tST[v[1]]["変調深度"][h] = v[2][h];});
+					state.tST[v[1]]["隊列"] = v[0];
+					state.tST[v[1]].state.HP = v[3];
+					state.tST[v[1]].state.MHP = v[4];
+					state.tST[v[1]].state.SP = v[5];
+					state.tST[v[1]].state.MSP = v[6];
+				});
+			});
+			return a;
+		})();
+		const logdata = state.loginit(v, i);
+		result[i] = {"pt": pt, "log": logdata};
+		//console.log(i, result[i]);
+	});
+	this.logdata = result;
 	return true;
 };
 
 miu$._LOGdata.init.prototype.createS = function() {
-	var func = {};
-	func.loop = logdata => {
-		logdata.forEach(v => {
-			if(checkObject(v, "Array")) {
-				func.loop(v);
-			} else {
-				func.object(v);
-			}
-		});
-	};
-	func.object = obj => {
-		var t = (obj.type === "LA") ? "A" : obj.type,
-			skill;
-		if(!checkObject(t, "Undefined") && /[PA]/.test(t)) {
-			skill = this.character[obj.user].skill[t];
-			if(checkObject(skill[obj.id], "Undefined")) {
-				skill[obj.id] = 1;
-			} else {
-				++skill[obj.id];
-			}
-		}
-	};
-	this.log.forEach(v => {func["loop"](v.log);});
 	return true;
 };
-
-/*
-miu$._LOGdata.init.prototype.createS = function() {
-	this.log.forEach((v) => {
-		console.log("createS",v.log);
-		var dada = this.makeSkillContainer(v.log, "");
-		console.log("dsafas",dada);
-	});
-	return true;
-};
-	//変調変換数差し込み,効果がなかったステータスの差し込み,増減スキル抽出,スキル抽出
-miu$._LOGdata.init.prototype.makeSkillContainer = function(logdata, id) {
-	var container = [], type;
-	((v) => {
-		type = (Array.isArray(v));
-		if(!type && !checkObject(v.id, "Undefined")) {
-			id = v.id;
-			if(!this.character[v.user].skill[id]) this.character[v.user].skill[id] = v; //スキル抽出
-		}
-	})(logdata[0]);
-	logdata.forEach((v, i) => {
-		if(Array.isArray(v)) { //array
-			container[i] = this.makeSkillContainer(v, id);
-		} else { //obj
-			container[i] = [v.prop, v.key, v.subkey, v.add];
-		}
-	});
-	if(type) {
-		return container;
-	} else {
-		this.getNoEffectAndConvert(logdata, id, container);
-	}
-	return false; //階層check終了
-};
-
-miu$._LOGdata.init.prototype.getNoEffectAndConvert = function(logdata, id, ctr) {
-	console.log("ctr",id,ctr);
-	var defS = {},
-		defS = defS[id],
-		bool = (!checkObject(defS, "Undefined"));
-	ctr.forEach((v) => {
-		if(Array.isArray(v) && miu$._LOGdata.checkFlag(v[0], "prop", [3,4,5,6,7,8,9])) {
-			console.log("ctr[i]",id,v);
-			console.log("true");
-			if(checkObject(this.sList[id], "Undefined")) {
-				this.sList[id] = {};
-				if(bool) this.sList[id]["Flag-fuyo"] = defS["Flag-fuyo"]; //付与flag
-				this.sList[id][v[1]] = (bool) ? (!checkObject(defS[v[1]], "Undefined")) ? defS[v[1]] : [0,0,0,""] : [0,0,0,""];
-			} else {
-				this.sList[id][v[1]] = (bool) ? (!checkObject(defS[v[1]], "Undefined")) ? defS[v[1]] : [0,0,0,""] : [0,0,0,""];
-			}
-		}
-	});
-	if(bool && !checkObject(defS["typejs"], "Undefined")) { //上昇低下
-		this.getNoEffect(logdata, defS, ctr);
-	}
-	if(bool && !checkObject(defS["typeconv"], "Undefined")) { //変調変換
-		
-	}
-};
-
-miu$._LOGdata.checkFlag = function(check, type, li) {
-	var f = new miu$._Flag.addressList(),
-		get, i, len = li.length; //効果なし,増加,減少,上昇,低下,奪取,強奪
-	li.forEach((v) => { get |= miu$._Flag.GET[v]; });
-	i = f[type].findIndex((v) => { return (v[0] === check); });
-	return (miu$._Flag.GET[i] & get) ? true : false;
-};
-*/
 
 miu$._LOGdata.regstr = function(str, reg) {
-	var result = str;
-	if(reg.checkReg.test(str)) {
-		result = "";
-		str = str.split(reg.RegCut);
-		str.forEach((val) => {
-			if(reg.RegStr.test(val)) {
-				val = "\\" + val;
-			}
-			result += val;
+	const f = () => {
+		let r = "";
+		str.split(reg.RegCut).forEach(v => {
+			if(reg.RegStr.test(v)) v = "\\" + v;
+			r += v;
 		});
-	}
-	return result;
+		return r;
+	};
+	return (reg.checkReg.test(str)) ? f() : str;
 };
 
 //////////////////////////////////////////////////////////////
 // log
 //
-
 miu$._GETlog = {};
 
-miu$._GETlog.NoP = function(mem) {
-	var x = [];
-	mem.forEach(v => {
-		x.push(v.length);
-	});
-	return x;
-};
-
-miu$._GETlog.indexlist = function() {
-	this.tairetu = 0;
-	this.name = 1;
-	this.hentyo = 2;
-	this.mhp = 3;
-	this.msp = 4;
-	this.psp = 5;
-	this.eno = 6;
+miu$._GETlog.indexlist = {
+	"tairetu": 0,
+	"name": 1,
+	"hentyo": 2,
+	"hp": 3,
+	"mhp": 4,
+	"sp": 5,
+	"msp": 6,
+	"link": 7,
+	"eno": 8
 };
 
 miu$._GETlog.infoStatus = function(name, tST) {
-	var obj = JSON.parse(JSON.stringify(tST[name]));
-	delete obj.shield;
-	delete obj["変調防御"];
+	const obj = JSON.parse(JSON.stringify(tST[name]));
 	return obj;
 };
 
-miu$._GETlog.beforetST = function(tST) {
+miu$._GETlog.before_tST = function(tST) {
 	return JSON.parse(JSON.stringify(tST));
 };
 
 //////要素のフィルタリング/////////////////////////////////////
-miu$._GETlog.getIndex = function(elem, name, str) {
-	str = new RegExp(str);
-	return Array.from(elem).findIndex((v) => {
-		return str.test(v[name]);
+miu$._GETlog.getIndex = function(e, name, str) {
+	const reg = new RegExp(str);
+	return Array.from(e).findIndex(v => {
+		return reg.test(v[name]);
 	});
 };
 
-miu$._GETlog.getNode = function(elem, name, str) {
-	str = new RegExp(str);
-	return Array.from(elem).filter((v) => {
-		return str.test(v[name]);
+miu$._GETlog.splitGetNode = function(e, name, str) {
+	const r = [[],[]],
+		reg = new RegExp(str);
+	Array.from(e).forEach(v => {
+		r[(reg.test(v[name])) ? 0 : 1].push(v);
 	});
-};
-
-miu$._GETlog.splitGetNode = function(elem, name, str) {
-	var result = [[],[]];
-	str = new RegExp(str);
-	Array.from(elem).forEach((v) => {
-		result[(str.test(v[name])) ? 0 : 1].push(v);
-	});
-	return result;
+	return r;
 };
 
 //////ターン毎の人数,変調,MHP,MSPを取得/////////////////////////
-miu$._GETlog.characterTable = function(tElem, tNum) {
-	this.character = this.Turn(tElem, tNum);
+miu$._GETlog.characterTable = function(tElem) {
+	this.character = this.Turn(tElem);
 };
 
-miu$._GETlog.characterTable.prototype.Turn = function(tElem, tNum) {
-	var tTable = tElem[tNum][0].getElementsByTagName('table');
-	tTable = [tTable[2], tTable[3]];
-	return tTable.map((v,i) => {
-		return Array.from(v.getElementsByTagName('tr')).map((v) => {
-			return this.parseText(miu$._GETlog.splitGetNode(v.getElementsByTagName('td'), 'className', "F2"), i);
+miu$._GETlog.characterTable.prototype.Turn = function(e) {
+	const tTable = e[0].getElementsByTagName('table');
+	return [tTable[2], tTable[3]].map((v,i) => {
+		return Array.from(v.getElementsByTagName('tr')).map(v => {
+			return this.parseText(miu$._GETlog.splitGetNode(v.getElementsByTagName('td'), 'className', 'F2'), i);
 		});
 	});
 };
 
 miu$._GETlog.characterTable.prototype.parseText = function(e, i) {
-	var str = [],
-		tag = new miu$._GETlog.indexlist(),
-		cache;
+	const str = [],
+		tag = miu$._GETlog.indexlist;
+	let cache;
 	cache = e[1][0].align;
 	str[tag.tairetu] = (cache === "CENTER") ? 2 : (cache === "RIGHT") ? (i) ? 3 : 1 : (i) ? 1 : 3;
 	e = miu$._GETlog.splitGetNode(e[0][0].children, 'className', 'LKG\\d+');
-	str[tag.psp] = parseInt(e[0][0].className.split(/(\d+)/)[1], 10);
-	e = miu$._GETlog.splitGetNode(e[1], 'nodeName', 'BR')[1];
-	e = miu$._GETlog.splitGetNode(e, 'nodeName', 'IMG')[1];
-	cache = e[e.length - 1].textContent.split(/(\d+$)/);
-	str[tag.msp] = parseInt(cache[1], 10);
+	str[tag.link] = parseInt(e[0][0].className.split(/(\d+)/)[1], 10);
+	e = miu$._GETlog.splitGetNode(e[1], 'nodeName', 'BR|IMG')[1];
+	cache = e[e.length-1].textContent.split(/(\d+)/);
+	str[tag.sp] = parseInt(cache[1], 10);
+	str[tag.msp] = parseInt(cache[3], 10);
 	--e.length;
-	cache = e[e.length - 1].textContent.split(/(\d+$)/);
-	str[tag.mhp] = parseInt(cache[1], 10);
+	cache = e[e.length-1].textContent.split(/(\d+)/);
+	str[tag.hp] = parseInt(cache[1], 10);
+	str[tag.mhp] = parseInt(cache[3], 10);
 	--e.length;
 	e = miu$._GETlog.splitGetNode(e, 'nodeName', 'SPAN');
 	str[tag.name] = e[1][0].textContent;
@@ -826,552 +608,406 @@ miu$._GETlog.characterTable.prototype.parseText = function(e, i) {
 	} else {
 		str[tag.eno] = 0;
 	}
-	str[tag.hentyo] = this.hentyo(e[0]);
+	str[tag.hentyo] = (hnty => {
+		const r = new miu$._DATAstate.hentyo();
+		hnty.forEach(v => {
+			const s = v.textContent.split(/(\d+)/);
+			r[s[0]] = parseInt(s[1], 10);
+		});
+		return r;
+	})(e[0]);
 	return str;
 };
 
-miu$._GETlog.characterTable.prototype.hentyo = function(hnty) {
-	var res = new miu$._DATAstate.hentyo();
-	hnty.forEach((v) => {
-		var s = v.textContent.split(/(\d+)/);
-		res[s[0]] = parseInt(s[1], 10);
-	});
-	return res;
-};
-
 //////ターン毎のログを取得//////////////////////////////////////
-miu$._GETlog.messageTable = function(tElem, tNum, reg, tST, pt) {
-	this.msg = this.Turn(tElem, tNum, reg, tST, pt);
+miu$._GETlog.turnMessageTable = function() {
+	this.tST = {};
+	this.Reg = {};
 };
 
-miu$._GETlog.messageTable.prototype.Turn = function(tElem, tNum, reg, tST, pt) {
-	var response = new String(tNum),
-		result = [], func = {};
-	func.TurnName = function(searchName) {
-		var i, len = searchName.length;
-		if(Array.isArray(searchName)) {
-			for(i = 0; i < len; ++i) {
-				if(searchName[i]) return func.TurnName(searchName[i]);
-			}
-		} else {
-			return searchName.user;
-		}
-		return false;
-	};
-	func.UndefinedArray = function(logdata) {
-		var i;
-		for(i = 0; i < logdata.length; ++i) {
-			while(!logdata[i] && i < logdata.length) logdata.splice(i, 1);
-			if(Array.isArray(logdata[i])) func.UndefinedArray(logdata[i]);
-			if(Array.isArray(logdata[i]) && !logdata[i].length) logdata.splice(i, 1);
-		}
-		return logdata;
-	};
-	tElem = tElem[tNum].map((v) => { return v; });
+miu$._GETlog.turnMessageTable.prototype.stateinit = function(obj, name) {
+	this.tST[name] = new miu$._DATAstate.stB(obj.Eno, obj.PTid, 0, 0);
+};
+
+miu$._GETlog.turnMessageTable.prototype.loginit = function(tElem, tNum) {
+	const result = [];
+	const tagT = [{"type": "S", "id": "T開始State"}];
+	(btST => {
+		Object.keys(btST).forEach(u => {
+			tagT.push(this.pushResult(btST, u, u, this.listResult(btST, u, u, undefined, undefined, undefined, undefined, "TstartState")));
+		});
+	})(miu$._GETlog.before_tST(this.tST));
 	tElem.forEach((v,i) => {
-		((response) => {
-			var idx = [0], user;
-			v = (i) ? v.getElementsByTagName('td')[0].children[0] : v.getElementsByTagName('td')[0].lastElementChild;
-			if(this.Acheck(miu$._GETlog.getNode(v.children, 'nodeName', 'B'))) {
-				//console.log("A行動");
-				result[i] = ((res, elem) => {
-					var sName, msg, len;
-					for(idx[0] = 0, len = elem.length; idx[0] < len; ++idx[0]) {
-						sName = {"user": false, "id": false, "slv": false};
-						msg = elem[idx[0]].textContent.split(/\n/);
-						res[idx[0]] = this.checkSkill(elem[idx[0]], msg, reg, tST, sName, idx, response + "," + idx[0], pt)[0];
-					}
-					return res;
-				})([], miu$._GETlog.splitGetNode(v.children, 'nodeName', 'BR')[1]);
-				//A行動終了
-				user = func.TurnName(result[i]);
-				tST[user]["変調深度"].Aend();
-				tST[user].per.Aend();
-				tST[user].Impact = 0;
-				((arr, i) => {
-					for(; i < arr.length; ++i) {
-						if(!arr[i]) arr.splice(i, 1);
-						if(arr[i].length === 1 && Array.isArray(arr[i][0]) && Array.isArray(arr[i][0][0]) && arr[i][0][0][0].type === "A") arr[i].push(this.listResult(tST, undefined, user, undefined, undefined, undefined, undefined, "ActionEnd"));
-						if(!arr[i][0]) arr.splice(i, 1);
-					}
-				})(result[i], 0);
-				result[i].push(this.listResult(tST, undefined, user, undefined, undefined, undefined, undefined, "ATurnEnd"));
+		v = v.getElementsByTagName('td')[0].lastElementChild;
+		v = miu$._GETlog.splitGetNode(v.children, 'nodeName', '^BR$')[1];
+		const Aindex = v.findIndex(v => {return this.Reg.action.n.test(v.textContent);});
+		if(Aindex >= 0) {//A行動
+			//console.log(i, "A行動", v);
+			const a = miu$._GETlog.msgsplit(v[Aindex])[0].split(this.Reg.action.n);
+			const hentyo = (v => {
+				const r = new miu$._DATAstate.hentyo();
+				const hReg = new miu$._REG.hentyo();
+				v = v.split(/[\[\]]/).filter(v => {return (/:/.test(v) && hReg.type.test(v));});
+				v.forEach(v => {
+					const s = v.split(/:(\d+)/);
+					s[0] = s[0].split(hReg.type)[1];
+					r[s[0]] = parseInt(s[1], 10);
+				});
+				return r;
+			})(a[4]);
+			const tagA = {"user": a[1], "nA": parseInt(a[3], 10), "変調深度": hentyo};
+			result[i] = this.checkSkill(v, tagA);
+			this.tST[tagA.user].per.Aend();
+			this.tST[tagA.user].Impact = 0;
+			const tagE = [{"type": "E", "user": tagA.user, "id": "A行動終了時"}, this.pushResult(miu$._GETlog.before_tST(this.tST), tagA.user, tagA.user, this.listResult(this.tST, tagA.user, undefined, undefined, undefined, undefined, undefined, "AturnEnd"))];
+			if(result[i][result[i].length-1] === 0) {
+				result[i][result[i].length-1] = tagE;
 			} else {
-				//console.log("開始時,離脱時");
-				result[i] = ((res, elem) => {
-					elem.forEach((v,i) => {
-						var sName = {"user": false, "id": false, "slv": false},
-							msg = v.textContent.split(/\n/);
-						res[i] = this.checkSkill(v, msg, reg, tST, sName, idx, response + "," + i, pt)[0];
-					});
-					return res;
-				})([], miu$._GETlog.splitGetNode(v.children, 'nodeName', 'BR')[1]);
+				result[i].push(tagE);
 			}
-		})(response + "," + i);
+		} else {//開始時,離脱時
+			//console.log(i, "開始時,離脱時", v);
+			result[i] = this.checkSkill(v, {});
+		}
 	});
-	if(tNum) result[0].push(this.listResult(tST, undefined, undefined, undefined, undefined, undefined, undefined, "TstartEnd"));
-	result = func.UndefinedArray(result);
-	//console.log(result);
+	result[0].unshift(tagT);
+	result[0].push([{"type": "E", "id": "T開始時後"}, this.listResult(this.tST, undefined, undefined, undefined, undefined, undefined, undefined, "TstartEnd")]);
+	//console.log(456, result);
 	return result;
 };
 
-miu$._GETlog.messageTable.prototype.Acheck = function(elem) {
-	var reg = /BAA\d/,
-		i, len = elem.length;
-	for(i = 0; i < len; ++i) {
-		if(reg.test(elem[i].className)) return true;
-	}
-	return false;
-};
-
-miu$._GETlog.messageTable.prototype.msgcheck = function(msg, reg) {
-	var msgs = [];
-	msg.forEach((v) => {
-		if(!/^\t/.test(v)) msgs.push(v);
+miu$._GETlog.msgsplit = function(v) {
+	return v.textContent.split(/\n/).filter(v => {
+		return (!/^\t/.test(v));
 	});
-	return msgs;
 };
 
-miu$._GETlog.messageTable.prototype.msgelem = function(elem) {
-	var a = [],
-		func = (h) => {
-			h.forEach((v) => {
-				var s;
-				if(/\n/.test(v.textContent)) {
-					if(v.nodeName === "#text") {
-						s = v.previousSibling;
-						if(s && s.nodeName !== "DIV" && s.className !== "CL") a.push(s);
-					} else {
-						func(Array.from(v.childNodes));
-					}
+miu$._GETlog.turnMessageTable.prototype.checkSkill = function(e, tagA) {
+	const result = [], len = e.length;
+	for(let i = 0; i < len; ++i) {
+		const msg = miu$._GETlog.msgsplit(e[i]);
+		const key = (msg[1] === "") ? undefined : Object.keys(this.Reg.action).find(v => {return this.Reg.action[v].test(msg[0]);});
+		//console.log(e[i], msg, key);
+		if(key) {
+			if(key === "n") {
+				const a = msg[0].split(this.Reg.action.n);
+				const tagN = {"type": "N", "user": a[1], "id": "▼An行動", "nA": parseInt(a[3], 10), "nN": a[2]};
+				if(!/連続/.test(tagN.nN)) {
+					Object.keys(tagA["変調深度"]).forEach(v => {
+						this.tST[tagA.user]["変調深度"][v] = tagA["変調深度"][v];
+					});
 				}
-			});
-		};
-	func(Array.from(elem.childNodes));
-	return a;
+				result[i] = [tagN, this.pushResult(miu$._GETlog.before_tST(this.tST), tagA.user, tagA.user, this.listResult(this.tST, tagA.user, undefined, undefined, undefined, undefined, undefined, "nTag"))];
+				++i;
+			}
+			result[i] = this["action_" + key](e[i], msg, tagA);
+		} else {
+			console.log(999, "error: key = " + key, msg[0]);
+		}
+	}
+	//console.log("checkSkill", result);
+	return result;
 };
 
-miu$._GETlog.messageTable.prototype.checkSkill = function(elem, msg, reg, tST, sName, idx, response, pt) {
-	//console.log(response);
-	var msglist = {"elem": elem, "msg": this.msgcheck(msg, reg), "sName": sName, "idx": idx, "elembr": this.msgelem(elem), "pt": pt},
-		countlist = {"Critical": 0, "TateKata": 0},
-		result = [], i = 0, len, pcount = 0, responseIndex = 0;
-	if(msglist.sName.user && msglist.sName.id) {
-		result[responseIndex++] = {"user": msglist.sName.user, "id": msglist.sName.id, "slv": msglist.sName.slv, "type": "A", "nA": msglist.sName.nA};
-		++i;
+/////////action/////////
+miu$._GETlog.turnMessageTable.prototype.action_L = function(el, message, tagA) {
+	const a = message[0].split(this.Reg.action.L),
+		result = [];
+	result[0] = {"type": "L", "user": a[1], "id": message[1], "slv": 0};
+	this.checkMessage(2, result, el, message);
+	//console.log("L", result);
+	return result;
+};
+miu$._GETlog.turnMessageTable.prototype.action_n = function(el, message, tagA) {
+	const e = miu$._GETlog.splitGetNode(el.children, 'nodeName', 'BR')[1],
+		result = [];
+	for(let i = 0; i < e.length; ++i) {
+		const msg = miu$._GETlog.msgsplit(e[i]),
+			key = Object.keys(this.Reg.action).find(v => {return this.Reg.action[v].test(msg[0]);});
+		result[i] = [];
+		if(key) {//L,P
+			result[i] = this["action_" + key](e[i], msg, tagA);
+		} else {//n
+			result[i][0] = {"type": "A", "user": tagA.user, "id": msg[0], "slv": 0};
+			(sp => {
+				const useSP = (sp * (sp + 1) / 2 * 10) + this.tST[tagA.user].state["消費SP"];
+				if(useSP > 0) this.tST[tagA.user].state.SP -= useSP;
+			})(miu$._GETlog.splitGetNode(e[0].children, 'className', 'P2')[0].length);
+			this.checkMessage(1, result[i], e[i], msg);
+		}
 	}
-	((arr) => {
-		var e = [], eb = [];
-		arr.forEach((v, i) => {
-			if(v !== "") {
-				e.push(msglist.msg[i]);
-				eb.push(msglist.elembr[i]);
-			}
-		});
-		msglist.msg = e;
-		msglist.elembr = eb;
-	})(msglist.msg);
-	//console.log(msglist.elembr);
-	//console.log(msglist.msg);
-	for(len = msglist.msg.length; i < len; ++i) {
-		((res, pElem) => {
-			//console.log(i,msglist.msg[i]);
-			if(msglist.sName.user && msglist.sName.id) {
-				//効果を取得、途中でパッシブがあれば再帰
-				res = this.getSkillEffect(reg, msglist, tST, i, countlist, result, response + "," + responseIndex);
-				if(!res && reg.action.P.test(msglist.msg[i])) {
-					pElem = miu$._GETlog.splitGetNode(msglist.elem.children, 'nodeName', 'DL')[0];
-					if(pElem.length) {
-						res = this.checkSkill(pElem[pcount], pElem[pcount].textContent.split(/\n/), reg, tST, {"user": false, "id": false, "slv": false}, idx, response + "," + responseIndex, pt);
-						i += res[1];
-						res = res[0];
-						++pcount;
-					}
-				}
-			} else {
-				//スキル名等を取得
-				res = this.getSkillName(reg, msglist, tST, i, result, response + "," + responseIndex);
-			}
-			//console.log(i,len,res);
-			if(res) result[responseIndex++] = res;
-		})();
+	result.push([{"type": "E", "user": tagA.user, "id": "▼An行動後"}, this.pushResult(miu$._GETlog.before_tST(this.tST), tagA.user, tagA.user, this.listResult(this.tST, tagA.user, undefined, undefined, undefined, undefined, undefined, "AnEnd"))]);
+	//console.log("n", result);
+	return result;
+};
+miu$._GETlog.turnMessageTable.prototype.action_P = function(el, message, tagA) {
+	const a = message[0].split(this.Reg.action.P),
+		r = /LV/, result = [];
+	a[3] = 0;
+	if(r.test(a[2])) {
+		const b = a[2].split(r);
+		a[2] = b[0];
+		a[3] = parseInt(b[1], 10);
 	}
-	//console.log(i);
-	return [result, i - 1];
+	result[0] = {"type": "P", "user": a[1], "id": a[2], "slv": a[3]};
+	this.checkMessage(1, result, el, message);
+	//console.log("P", result);
+	return result;
+};
+miu$._GETlog.turnMessageTable.prototype.action_Md = function(el, message, tagA) {
+	const a = message[0].split(this.Reg.action.Md),
+		btST = miu$._GETlog.before_tST(this.tST),
+		f = new miu$._Flag.addressList(this.tST),
+		func = (a,b) => {return f[a][f.getIndex(b[a])][0];},
+		result = [{}, [{}, {}]];
+	result[0] = {"type": "H", "user": tagA.user, "id": "猛毒ダメージ", "slv": this.tST[tagA.user]["変調深度"]["毒"]};
+	result[1][0] = this.pushResult(btST, tagA.user, tagA.user, this.listResult(this.tST, tagA.user, tagA.user, parseInt(a[1], 10), "HP", undefined, "変調ダメージ", undefined));
+	result[1][1] = this.pushResult(btST, tagA.user, tagA.user, this.listResult(this.tST, tagA.user, tagA.user, parseInt(a[2], 10), "MHP", undefined, "減少", undefined));
+	this.state_hpsp(func("prop", result[1][0]), tagA.user, tagA.user, func("key", result[1][0]), result[1][0].add, this.tST);
+	this.state_hpsp(func("prop", result[1][1]), tagA.user, tagA.user, func("key", result[1][1]), result[1][1].add, this.tST);
+	this.tST[tagA.user].state.nMHPdoku(result[1][1].add);
+	//console.log("H", result);
+	return result;
+};
+miu$._GETlog.turnMessageTable.prototype.action_tEnd = function(el, message, tagA) {
+	const hReg = new miu$._REG.hentyo(),
+		a = message[0].split(this.Reg.action.tEnd)[2].split(/が解消！|が消滅！/);
+	a.forEach(v => {
+		const c = v.split(hReg.type)[1];
+		if(c) this.tST[tagA.user]["変調深度"][c] = 0;
+	});
+	//console.log("tEnd", result);
+	return 0;
 };
 
-	//スキル効果を取得用
-miu$._GETlog.messageTable.prototype.getSkillEffect = function(reg, msglist, tST, x, countlist, resultlist, response) {
-	var key = Object.keys(reg.damage).find((v) => {
-			return reg.damage[v].test(msglist.msg[x]);
-		});
-	if(key) return this[key](reg, msglist, tST, x, countlist, resultlist, response);
+miu$._GETlog.turnMessageTable.prototype.checkMessage = function(index, result, el, message) {
+	const len = message.length,
+		countlist = {"cri": undefined, "kata": undefined},
+		Plist = miu$._GETlog.splitGetNode(el.children, 'nodeName', 'DL')[0];
+	const func_length = r => {
+		let len = 0;
+		r.forEach(v => {if(checkObject(v, "Array") && v[0].type) len += func_length(v);});
+		len += r.length;
+		return len;
+	};
+	for(let i = index, Pi = 0; i < len; ++i) {
+		//console.log(i, message[i]);
+		const key = Object.keys(this.Reg.damage).find(v => {return this.Reg.damage[v].test(message[i]);});
+		if(key) {
+			let r = this["damage_" + key](message[i], result[0], countlist);
+			if(!r && this.Reg.action.P.test(message[i])) {
+				r = this.action_P(Plist[Pi], miu$._GETlog.msgsplit(Plist[Pi]), {});
+				++Pi;
+				i += func_length(r);
+			}
+			if(r) result.push(r);
+		} else {
+			if(message[i] !== "") console.log(777, "error: msgkey = " + key, message[i]);
+		}
+	}
 };
-	//damage
-miu$._GETlog.messageTable.prototype.trimE = function(reg, msglist, tST, x, countlist, resultlist, response) {
-	var Nameid = msglist.msg[x].split(reg.damage.trimE),
-		efflist = {"target": Nameid[1], "str": "", "pre": Nameid[0], "rlist": resultlist, "i": x, "response": response},
-		key = Object.keys(reg.effect).find((v) => {
-			return reg.effect[v].test(Nameid[3]);
-		});
+
+/////////damage/////////
+miu$._GETlog.turnMessageTable.prototype.damage_trimE = function(msg, sobj, cl) {
+	const m = msg.split(this.Reg.damage.trimE);
+	const key = Object.keys(this.Reg.effect).find(v => {return this.Reg.effect[v].test(m[3]);});
 	if(key) {
-		efflist.str = Nameid[3].split(reg.effect[key]);
-		return this[key](reg, msglist, tST, efflist);
+		const str = {"target": m[1], "eff": m[3].split(this.Reg.effect[key]), "dmg": m, "cl": cl};
+		const r = this["effect_" + key](str, sobj, miu$._GETlog.before_tST(this.tST));
+		if(r) return r;
 	}
+	return key;
 };
-
-miu$._GETlog.messageTable.prototype.Critical = function(reg, msglist, tST, x, countlist, resultlist) {
-	var li = this.listResult(tST, undefined, msglist.sName.user, undefined, undefined, undefined, undefined, "Critical");
-	li.NoT = countlist.Critical++;
+miu$._GETlog.turnMessageTable.prototype.damage_Critical = function(msg, sobj, cl) {
+	const add = msg.match(/Critical\sHit!!/g).length,
+		li = this.listResult(this.tST, sobj.user, undefined, add, undefined, undefined, undefined, "Critical");
+	cl.cri = li;
+	return li;
+};
+miu$._GETlog.turnMessageTable.prototype.damage_Kata = function(msg, sobj, cl) {
+	const m = msg.split(this.Reg.damage.Kata),
+		li = this.listResult(this.tST, m[2], m[1], undefined, undefined, undefined, undefined, "護衛");
+	--this.tST[m[2]].goei[m[1]];
+	cl.kata = li;
+	return li;
+};
+miu$._GETlog.turnMessageTable.prototype.damage_skillef = function(msg, sobj, cl) {
+	const li = this.listResult(this.tST, sobj.user, undefined, undefined, undefined, undefined, undefined, "スキル説明");
+	li.spec = msg;
 	return li;
 };
 
-miu$._GETlog.messageTable.prototype.Tate = function(reg, msglist, tST, x, countlist, resultlist) {
-	var Nameid = msglist.msg[x].split(reg.damage.Tate),
-		li = this.listResult(tST, Nameid[1], undefined, parseInt(Nameid[3], 10), undefined, undefined, undefined, "盾受");
-	li.NoT = countlist.TateKata++;
-	return li;
+/////////effect/////////
+miu$._GETlog.turnMessageTable.prototype.effect_Status = function(msg, sobj, btST) {
+	const li = this.listResult(this.tST, sobj.user, msg.target, undefined, msg.eff[1], undefined, msg.eff[3], undefined);
+	this.count(li.prop, li.key, msg.target);
+	return this.pushResult(btST, sobj.user, msg.target, li);
 };
-
-miu$._GETlog.messageTable.prototype.Kata = function(reg, msglist, tST, x, countlist, resultlist) {
-	var Nameid = msglist.msg[x].split(reg.damage.Kata),
-		li = this.listResult(tST, Nameid[1], Nameid[2], undefined, undefined, undefined, undefined, "護衛");
-	li.NoT = countlist.TateKata++;
-	--tST[Nameid[2]].goei[Nameid[1]];
-	return li;
-};
-
-miu$._GETlog.messageTable.prototype.TateKaihi = function(reg, msglist, tST, x, countlist, resultlist) {
-	var li = this.listResult(tST, undefined, msglist.sName.user, undefined, undefined, undefined, undefined, "盾回避");
-	li.NoT = countlist.TateKata++;
-	return li;
-};
-
-miu$._GETlog.messageTable.prototype.skillef = function(reg, msglist, tST, x, countlist, resultlist) {
-	var str = msglist.msg[x].split(/！?$/),
-		li = this.listResult(tST, undefined, msglist.sName.user, undefined, undefined, undefined, undefined, "スキル説明");
-	li.spec = str[0];
-	return li;
-};
-
-	//effect
-miu$._GETlog.messageTable.prototype.Status = function(reg, msglist, tST, efflist) {
-	var li = this.listResult(tST, efflist.target, msglist.sName.user, undefined, efflist.str[1], undefined, efflist.str[3], undefined),
-		btST = miu$._GETlog.beforetST(tST);
-	miu$._GETlog.count(tST, li.prop, li.key, efflist.target);
-	return this.pushResult(btST, efflist, msglist, li);
-};
-
-miu$._GETlog.messageTable.prototype.StatusKJ = function(reg, msglist, tST, efflist) {
-	var add = parseInt(efflist.str[2], 10),
-		prop = efflist.str[3],
-		key = efflist.str[1],
-		regexp = [/^(\d+)\sターンの間、/, /(\d+)\sターンに..！$/],
-		msg = [efflist.pre, efflist.str[4]],
-		turn = 0,
-		btST = miu$._GETlog.beforetST(tST);
-	regexp.forEach((v, i) => {
-		if(v.test(msg[i])) {
-			turn = parseInt(msg[i].split(v)[1], 10);
-		}
-	});
-	tST[efflist.target].per[key][1] = turn;
+miu$._GETlog.turnMessageTable.prototype.effect_StatusKJ = function(msg, sobj, btST) {
+	const add = parseInt(msg.eff[2], 10),
+		key = msg.eff[1],
+		prop = msg.eff[3],
+		m = [msg.dmg[0], msg.eff[4]],
+		regexp = [/^(\d+)\sターンの間、/, /(\d+)\sターンに..！$/];
+	let turn = 0;
+	regexp.forEach((v,i) => {if(v.test(m[i])) turn = parseInt(m[i].split(v)[1], 10);});
+	this.tST[msg.target].per[key][1] = turn;
 	if(turn) {
-		tST[efflist.target].per[key][0] = (prop === "強化") ? add : -add;
+		this.tST[msg.target].per[key][0] = (prop === "強化") ? add : -add;
 	} else {
-		tST[efflist.target].per.Reset(key);
+		this.tST[msg.target].per.Reset(key);
 	}
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, prop, undefined));
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, add, key, undefined, prop, undefined));
 };
-
-miu$._GETlog.messageTable.prototype.StatusHS = function(reg, msglist, tST, efflist) {
-	var cri = 0, f = new miu$._Flag.addressList(tST),
-		list = [], func = {},
-		target = efflist.target,
-		regprop = /(盾受|肩代|盾回避|Critical)/,
-		i = 1, len = efflist.rlist.length, obj,
-		btST = miu$._GETlog.beforetST(tST);
-	func["盾受"] = (o) => {
-		tST[o.target].shield = o.add;
-	};
-	func["護衛"] = (o) => {
-		target = o.target;
-	};
-	func["盾回避"] = (o) => {
-		return ;
-	};
-	func["Critical"] = (o) => {
-		cri = miu$._GETlog.splitGetNode(msglist.elem.getElementsByTagName('I'), 'className', 'Y4')[0];
-		cri = cri[o.NoT].textContent.match(/Critical\sHit!!/g);
-		cri = cri.length;
-	};
-	func["sublist"] = (str) => {
-		var add = parseInt(str[3], 10),
-			prop = str[4],
-			key = str[1],
-			li;
-		if(!key) key = "HP";
+miu$._GETlog.turnMessageTable.prototype.effect_StatusHS = function(msg, sobj, btST) {
+	const list = [];
+	const func_li = str => {
+		const add = parseInt(str[3], 10);
+		const prop = str[4];
+		const key = (str[1]) ? str[1] : "HP";
 		if(/ダメージ/.test(prop)) {
-			prop = "ダメージ";
-			tST[msglist.sName.user].yDam = 0;
-			tST[target].hDam = 0;
+			this.tST[sobj.user].yDam = 0;
+			this.tST[msg.target].hDam = 0;
 		}
-		li = this.listResult(tST, target, msglist.sName.user, add, key, undefined, prop, undefined);
-		miu$._GETlog.count(tST, li.prop, li.key, target);
-		if(key === "MHP") miu$._GETlog.statenMHP(tST, prop, msglist.sName.user, target, add, efflist.rlist[0].slv, efflist.rlist[0].type, msglist.pt, miu$._GETlog.specSplit(efflist));
-		miu$._GETlog.statehpsp(prop, msglist.sName.user, target, key, add, tST);
+		const li = this.listResult(this.tST, sobj.user, msg.target, add, key, undefined, prop, undefined);
+		this.count(li.prop, li.key, msg.target);
+		if(key === "MHP") console.log("nMHP計算");
+		this.state_hpsp(prop, sobj.user, msg.target, key, add, this.tST);
 		return li;
 	};
-	for(i = 1; ((len - i) >= 1) && (i <= 3); ++i) {
-		obj = efflist.rlist[len - i];
-		if(checkObject(obj, "Undefined") || Array.isArray(obj) || !regprop.test(f.other[f.getIndex(obj.other)][0])) break;
-		func[f.other[f.getIndex(obj.other)][0]](obj);
-	}
-	list.push(func.sublist(efflist.str));
-	if(efflist.str[5]) list.push(func.sublist(efflist.str[5].split(reg.effect.StatusHS)));
-	((i, prop, e) => {
-		prop = list.find((v) => {return /奪取|強奪/.test(f.prop[f.getIndex(v.prop)][0]);});
-		if(prop) prop = f.prop[f.getIndex(prop.prop)][0];
-		e[0] = miu$._HTMLfunc.setInfo(efflist.rlist, btST, target, msglist.sName.user, efflist.response);
-		e[1] = miu$._HTMLfunc.sethpsp(tST, target, msglist.sName.user, prop);
-		e.forEach(ev => {msglist.elembr[i].parentNode.insertBefore(ev, msglist.elembr[i]);});
-		list.forEach(v => {v.info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, btST), "targetStatus": miu$._GETlog.infoStatus(target, btST), "critical": cri};});
-	})(efflist.i, "", []);
+	list.push(func_li(msg.eff));
+	if(msg.eff[5]) list.push(func_li(msg.eff[5].split(this.Reg.effect.StatusHS)));
+	list.forEach(v => {
+		this.pushResult(btST, sobj.user, msg.target, v);
+		if(msg.cl.cri) v.info.cri = msg.cl.cri.add;
+	});
+	Object.keys(msg.cl).forEach(v => {msg.cl[v] = undefined;});
 	return list;
 };
-
-miu$._GETlog.messageTable.prototype.yhHeal = function(reg, msglist, tST, efflist) {
-	var key = (efflist.str[1] === "使う") ? "yHeal" : "hHeal",
-		btST = miu$._GETlog.beforetST(tST);
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, key, undefined, efflist.str[2], undefined));
+miu$._GETlog.turnMessageTable.prototype.effect_yhHeal = function(msg, sobj, btST) {
+	const key = (msg.eff[1] === "使う") ? "yHeal" : "hHeal";
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, undefined, key, undefined, msg.eff[2], undefined));
 };
-
-miu$._GETlog.messageTable.prototype.yhDam = function(reg, msglist, tST, efflist) {
-	var key = (efflist.str[1] === "受ける") ? "hDam" : "yDam",
-		add = efflist.str[2].split(/(.\d+)/),
-		btST = miu$._GETlog.beforetST(tST);
-	add = (add.length > 1) ? parseInt(add[1], 10) : 0;
-	tST[efflist.target][key] = add;
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined));
+miu$._GETlog.turnMessageTable.prototype.effect_yhDam = function(msg, sobj, btST) {
+	const key = (msg.eff[1] === "受ける") ? "hDam" : "yDam",
+		m = msg.eff[2].split(/(.\d+)/),
+		add = (m.length > 1) ? parseInt(m[1], 10) : 0;
+	this.tST[msg.target][key] = add;
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, add, key, undefined, undefined, undefined));
 };
-
-miu$._GETlog.messageTable.prototype.Hentyo = function(reg, msglist, tST, efflist) {
-	var reghentyo = new miu$._REG.hentyo(),
-		subkey = efflist.str[1].split(reghentyo.type)[1],
-		add = parseInt(efflist.str[3], 10),
-		prop = efflist.str[4],
-		key = Object.keys(reghentyo.keys).find((v) => { return reghentyo.keys[v].test(efflist.str[2]);}),
-		funckey = (key) ? key.match(/防御|深度/) : null,
-		btST = miu$._GETlog.beforetST(tST);
-	add = (add) ? add : undefined;
+miu$._GETlog.turnMessageTable.prototype.effect_Hentyo = function(msg, sobj, btST) {
+	const hReg = new miu$._REG.hentyo();
+	const a = {
+		"add": parseInt(msg.eff[3], 10),
+		"subkey": msg.eff[1].split(hReg.type)[1],
+		"prop": msg.eff[4],
+		"key": Object.keys(hReg.keys).find(v => {return hReg.keys[v].test(msg.eff[2]);})
+	};
+	const funckey = (a.key) ? a.key.match(/防御|深度/) : null;
+	if(!a.add) a.add = undefined;
 	if(funckey !== null) {
-		prop = ((fk, pr) => {
-			var func = {};
-			func["防御"] = (p) => {
-				var reg = {"追加": /得た/, "減少": /減/};
-				p = Object.keys(reg).find((v) => { return reg[v].test(p);});
-				tST[efflist.target][key][subkey] = miu$._DATAstate._update(tST[efflist.target][key][subkey], (p === "追加") ? add : -add);
+		a.prop = ((fk,pr) => {
+			const func = {};
+			func["防御"] = p => {
+				const reg = {"追加": /得た/, "減少": /減/};
+				p = Object.keys(reg).find(v => {return reg[v].test(p);});
+				this.tST[msg.target][a.key][a.subkey] = miu$._DATAstate._update(this.tST[msg.target][a.key][a.subkey], (p === "追加") ? a.add : -a.add);
 				return p;
 			};
-			func["深度"] = (p) => {
-				var reg = {"追加": /.*追加/, "軽減": /減/, "抵抗": /抵抗/, "変調防御": /防御/, "奪取": /奪取/};
-				p = Object.keys(reg).find((v) => { return reg[v].test(p);});
+			func["深度"] = p => {
+				const reg = {"追加": /.*追加/, "軽減": /減/, "抵抗": /抵抗/, "変調防御": /防御/, "奪取": /奪取/};
+				p = Object.keys(reg).find(v => {return reg[v].test(p);});
 				if(p === "抵抗") {
-					add = 0;
+					a.add = 0;
 					return p;
 				}
 				if(p === "奪取") {
-					tST[efflist.target][key][subkey] = miu$._DATAstate._update(tST[efflist.target][key][subkey], -add);
-					tST[msglist.sName.user][key][subkey] = miu$._DATAstate._update(tST[msglist.sName.user][key][subkey], add);
+					this.tST[msg.target][a.key][a.subkey] = miu$._DATAstate._update(this.tST[msg.target][a.key][a.subkey], -a.add);
+					this.tST[sobj.user][a.key][a.subkey] = miu$._DATAstate._update(this.tST[sobj.user][a.key][a.subkey], a.add);
 				} else {
-					((key, add) => {
-						tST[efflist.target][key][subkey] = miu$._DATAstate._update(tST[efflist.target][key][subkey], add);
-					})((p === "変調防御") ? p : key, (p === "追加") ? add : -add);
+					((key,add) => {
+						this.tST[msg.target][key][a.subkey] = miu$._DATAstate._update(this.tST[msg.target][key][a.subkey], add);
+					})((p === "変調防御") ? p : a.key, (p === "追加") ? a.add : -a.add);
 				}
 				return p;
 			};
 			return func[fk](pr);
-		})(funckey[0], prop);
+		})(funckey[0], a.prop);
 	}
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, subkey, prop, undefined));
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, a.add, a.key, a.subkey, a.prop, undefined));
 };
-
-miu$._GETlog.messageTable.prototype.Renzok = function(reg, msglist, tST, efflist) {
-	var prop = (efflist.str[1] === "早く") ? "増加" : "減少",
-		btST = miu$._GETlog.beforetST(tST);
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "連続", undefined, prop, undefined));
+miu$._GETlog.turnMessageTable.prototype.effect_Renzok = function(msg, sobj, btST) {
+	const prop = (msg.eff[1] === "早く") ? "増加" : "減少";
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, undefined, "連続", undefined, prop, undefined));
 };
-
-miu$._GETlog.messageTable.prototype.syatai = function(reg, msglist, tST, efflist) {
-	var add = parseInt(efflist.str[3], 10),
-		key = efflist.str[1],
-		btST = miu$._GETlog.beforetST(tST);
-	tST[efflist.target][key] = add;
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, key, undefined, undefined, undefined));
+//miu$._GETlog.turnMessageTable.prototype.effect_syatai = function(msg, sobj, btST) {};
+//miu$._GETlog.turnMessageTable.prototype.effect_shield = function(msg, sobj, btST) {};
+//miu$._GETlog.turnMessageTable.prototype.effect_nasi = function(msg, sobj, btST) {};
+miu$._GETlog.turnMessageTable.prototype.effect_kaihi = function(msg, sobj, btST) {
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, undefined, undefined, undefined, "回避", undefined));
 };
-
-miu$._GETlog.messageTable.prototype.shield = function(reg, msglist, tST, efflist) {
-	var add = parseInt(efflist.str[2], 10),
-		prop = efflist.str[3],
-		sub = (prop === "減少") ? -1 : 1,
-		btST = miu$._GETlog.beforetST(tST);
-	if(prop === "奪取") {
-		tST[msglist.sName.user].shield = miu$._DATAstate._update(tST[msglist.sName.user].shield, add);
-		sub = -1;
-	}
-	tST[efflist.target].shield = miu$._DATAstate._update(tST[efflist.target].shield, (add * sub));
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, add, "shield", undefined, prop, undefined));
+miu$._GETlog.turnMessageTable.prototype.effect_hate = function(msg, sobj, btST) {
+	const prop = (msg.eff[1] === "やすく") ? "増加" : "減少";
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, undefined, "Hate", undefined, prop, undefined));
 };
-
-miu$._GETlog.messageTable.prototype.nasi = function(reg, msglist, tST, efflist) {
-	var btST = miu$._GETlog.beforetST(tST);
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "効果なし", undefined));
-};
-
-miu$._GETlog.messageTable.prototype.kaihi = function(reg, msglist, tST, efflist) {
-	var btST = miu$._GETlog.beforetST(tST);
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, "回避", undefined));
-};
-
-miu$._GETlog.messageTable.prototype.hate = function(reg, msglist, tST, efflist) {
-	var prop = (efflist.str[1] === "やすく") ? "増加" : "減少",
-		btST = miu$._GETlog.beforetST(tST);
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "Hate", undefined, prop, undefined));
-};
-
-miu$._GETlog.messageTable.prototype.fuyoLv = function(reg, msglist, tST, efflist) {
-	var btST = miu$._GETlog.beforetST(tST);
-	return ((t, k, add, prop, f) => {
-		var i = (/増加/.test(prop)) ? 1 : -1;
-		if(checkObject(f[k], "Undefined")) f[k] = 0;
+miu$._GETlog.turnMessageTable.prototype.effect_fuyoLv = function(msg, sobj, btST) {
+	return ((u,t,k,add,prop,fuyo) => {
+		const i = (/増加/.test(prop)) ? 1 : -1;
+		if(!fuyo[k]) fuyo[k] = 0;
 		if(!miu$._Flag.fuyoSkill[k]) miu$._Flag.fuyoSkill[k] = true;
-		f[k] = miu$._DATAstate._update(f[k], add * i);
-		return this.pushResult(btST, efflist, msglist, this.listResult(tST, t, msglist.sName.user, add, "付与lv", k, prop, undefined));
-	})(efflist.target, efflist.str[1], parseInt(efflist.str[2], 10), (/付加|増加/.test(efflist.str[3])) ? "増加" : "減少", tST[efflist.target].fuyoLv);
+		fuyo[k] = miu$._DATAstate._update(fuyo[k], add * i);
+		return this.pushResult(btST, u, t, this.listResult(this.tST, u, t, add, "付与lv", k, prop, undefined));
+	})(sobj.user , msg.target, msg.eff[1], parseInt(msg.eff[2], 10), (/付加|増加/.test(msg.eff[3])) ? "増加" : "減少", this.tST[msg.target].fuyoLv);
+};
+miu$._GETlog.turnMessageTable.prototype.effect_useSp = function(msg, sobj, btST) {
+	const add = parseInt(msg.eff[1], 10);
+	const prop = msg.eff[2];
+	const i = (/増加|上昇/.test(prop)) ? 1 : -1;
+	const li = this.listResult(this.tST, sobj.user, msg.target, add, "消費SP", undefined, prop, undefined);
+	this.count(li.prop, li.key, msg.target);
+	this.tST[msg.target].state["消費SP"] += add * i;
+	return this.pushResult(btST, sobj.user, msg.target, li);
+};
+miu$._GETlog.turnMessageTable.prototype.effect_keigen = function(msg, sobj, btST) {
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, undefined, "軽減率", undefined, msg.eff[2], undefined));
+};
+miu$._GETlog.turnMessageTable.prototype.effect_impact = function(msg, sobj, btST) {
+	this.tST[msg.target].Impact++;
+	return this.pushResult(btST, sobj.user, msg.target, this.listResult(this.tST, sobj.user, msg.target, undefined, undefined, undefined, undefined, "Impact"));
+};
+miu$._GETlog.turnMessageTable.prototype.effect_goei = function(msg, sobj, btST) {
+	return ((u,t,add) => {
+		if(typeof this.tST[u].goei[t] === "undefined") this.tST[u].goei[t] = 0;
+		this.tST[u].goei[t] += add;
+		return this.pushResult(btST, u, t, this.listResult(this.tST, u, t, add, "護衛", undefined, undefined, undefined));
+	})(sobj.user, msg.target, parseInt(msg.eff[1], 10));
+};
+//miu$._GETlog.turnMessageTable.prototype.effect_syometu = function(msg, sobj) {};
+
+//////////
+miu$._GETlog.turnMessageTable.prototype.listResult = function(tST, user, target, add, key, subkey, prop, other) {
+	const f = new miu$._Flag.addressList(tST);
+	return {
+		"target": f.keysIndex("character", ((target) ? tST[target].Eno + " : " + target : target), 0),
+		"user": f.keysIndex("character", ((user) ? tST[user].Eno + " : " + user : user), 0),
+		"add": add, "key": f.keysIndex("key", key, 0),
+		"subkey": f.keysIndex("subkey", subkey, 0),
+		"prop": f.keysIndex("prop", prop, 0),
+		"other": f.keysIndex("other", other, 0)
+	};
 };
 
-miu$._GETlog.messageTable.prototype.useSp = function(reg, msglist, tST, efflist) {
-	var btST = miu$._GETlog.beforetST(tST);
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, parseInt(efflist.str[1], 10), "消費SP", undefined, efflist.str[2], undefined));
-};
-
-miu$._GETlog.messageTable.prototype.keigen = function(reg, msglist, tST, efflist) {
-	var btST = miu$._GETlog.beforetST(tST);
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, "軽減率", undefined, efflist.str[2], undefined));
-};
-
-miu$._GETlog.messageTable.prototype.impact = function(reg, msglist, tST, efflist) {
-	var btST = miu$._GETlog.beforetST(tST);
-	tST[efflist.target].Impact++;
-	return this.pushResult(btST, efflist, msglist, this.listResult(tST, efflist.target, msglist.sName.user, undefined, undefined, undefined, undefined, "Impact"));
-};
-
-miu$._GETlog.messageTable.prototype.goei = function(reg, msglist, tST, efflist) {
-	var btST = miu$._GETlog.beforetST(tST);
-	return ((t,u,add) => {
-		if(typeof tST[u].goei[t] === "undefined") tST[u].goei[t] = 0;
-		tST[u].goei[t] = add;
-		return this.pushResult(btST, efflist, msglist, this.listResult(tST, t, u, add, "護衛", undefined, undefined, undefined));
-	})(efflist.target, msglist.sName.user, parseInt(efflist.str[1], 10));
-};
-
-miu$._GETlog.messageTable.prototype.syometu = function(reg, msglist, tST, efflist) {};
-
-
-	//スキル名等を取得用
-miu$._GETlog.messageTable.prototype.getSkillName = function(reg, msglist, tST, x, result, response) {
-	var key = Object.keys(reg.action).find((v) => { return reg.action[v].test(msglist.msg[x]); });
-	if(key) return this[key](reg, msglist, tST, x, result, response);
-};
-	//action
-miu$._GETlog.messageTable.prototype.P = function(reg, msglist, tST, x, result, response) {
-	var strP = msglist.msg[x].split(reg.action.P),
-		r = /LV/;
-	strP[3] = "0";
-	if(r.test(strP[2])) {
-		r = strP[2].split(r);
-		strP[2] = r[0];
-		strP[3] = r[1];
-	}
-	msglist.sName = {"user": strP[1], "id": strP[2], "slv": strP[3]};
-	return {"user": msglist.sName.user, "id": msglist.sName.id, "slv": parseInt(msglist.sName.slv, 10), "type": "P"};
-};
-
-miu$._GETlog.messageTable.prototype.n = function(reg, msglist, tST, x, result, response) {
-	++msglist.idx[0];
-	var el = miu$._GETlog.splitGetNode(msglist.elem.parentNode.children, 'nodeName', 'BR')[1][msglist.idx[0]];
-	return ((res, el, msg, str) => {
-		var skillName = el[0].getElementsByTagName('i')[0].textContent;
-		((sp) => {
-			if(sp) tST[str[1]].state.SP -= sp * (sp + 1) / 2 * 10;
-		})(miu$._GETlog.splitGetNode(el[0].children, 'className', 'P2')[0].length);
-		el.forEach((v,i) => {
-			msg = v.textContent.split(/\n/);
-			res[i] = this.checkSkill(v, msg, reg, tST, {"user": str[1], "id": skillName, "slv": 0, "nA": parseInt(str[3], 10)}, msglist.idx, response + "," + i, msglist.pt)[0];
-			skillName = false;
-		});
-		return res;
-	})([], miu$._GETlog.splitGetNode(el.children, 'nodeName', 'BR')[1], "", msglist.msg[x].split(reg.action.n));
-};
-
-miu$._GETlog.messageTable.prototype.L = function(reg, msglist, tST, x, result, response) {
-	var strL = msglist.msg[x].split(reg.action.L),
-		elem = miu$._GETlog.splitGetNode(msglist.elem.children, 'nodeName', 'I(?!.)')[0];
-	elem = elem[1].textContent;
-	msglist.sName = {"user": strL[1], "id": elem, "slv": 0};
-	return {"user": msglist.sName.user, "id": msglist.sName.id, "slv": parseInt(msglist.sName.slv, 10), "type": "LA"};
-};
-
-miu$._GETlog.messageTable.prototype.tEnd = function(reg, msglist, tST, x, result, response) {};
-
-miu$._GETlog.messageTable.prototype.Mc = function(reg, msglist, tST, x, result, response) {
-	return {"user": msglist.sName.user, "id": "魅了キャンセル", "slv": tST[msglist.sName.user]["変調深度"]["魅"], "type": "H"};
-};
-
-miu$._GETlog.messageTable.prototype.Md = function(reg, msglist, tST, x, result, response) {
-	var dam = msglist.msg[x].split(reg.action.Md),
-		elem = miu$._GETlog.splitGetNode(msglist.elem.parentNode.children, 'className', 'BAA\\d+')[0],
-		res = [{},[{},{}]], func = {}, flag = new miu$._Flag.addressList(tST),
-		btST = miu$._GETlog.beforetST(tST);
-	func.i_t = (a,b) => {return flag[a][flag.getIndex(b[a])][0];};
-	elem = miu$._GETlog.splitGetNode(elem[0].children, 'className', 'F5')[0];
-	elem = elem[0].textContent.split(reg.nTrim);
-	msglist.sName = {"user": elem[1], "id": "猛毒ダメージ", "slv": 0};
-	res[0] = { "user": msglist.sName.user, "id": "猛毒ダメージ", "slv": tST[msglist.sName.user]["変調深度"]["毒"], "type": "H" };
-	res[1][0] = this.listResult(tST, msglist.sName.user, msglist.sName.user, parseInt(dam[1], 10), "HP", undefined, "ダメージ", undefined);
-	res[1][1] = this.listResult(tST, msglist.sName.user, msglist.sName.user, parseInt(dam[2], 10), "MHP", undefined, "減少", undefined);
-	miu$._GETlog.statehpsp(func.i_t("prop", res[1][0]), msglist.sName.user, msglist.sName.user, func.i_t("key", res[1][0]), res[1][0].add, tST);
-	tST[msglist.sName.user].state.nMHPdoku(res[1][1].add);
-	miu$._GETlog.statehpsp(func.i_t("prop", res[1][1]), msglist.sName.user, msglist.sName.user, func.i_t("key", res[1][1]), res[1][1].add, tST);
-	res[1].forEach(v => {v.info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, btST), "targetStatus": miu$._GETlog.infoStatus(msglist.sName.user, btST)};});
-	((e) => {
-		var t = response.substr(0, response.length - 1) + 1;
-		e[0] = miu$._HTMLfunc.setInfo(res, tST, msglist.sName.user, msglist.sName.user, t);
-		e[1] = miu$._HTMLfunc.sethpsp(tST, msglist.sName.user, msglist.sName.user, "");
-		e.forEach(v => {msglist.elem.appendChild(v);});
-	})([]);
-	return res;
-};
-
-miu$._GETlog.messageTable.prototype.listResult = function(tST, target, user, add, key, subkey, prop, other) {
-	var f = new miu$._Flag.addressList(tST);
-	return {"target": f.keysIndex("character", ((target) ? tST[target].Eno + " : " + target : target), 0), "user": f.keysIndex("character", ((user) ? tST[user].Eno + " : " + user : user), 0), "add": add, "key": f.keysIndex("key", key, 0), "subkey": f.keysIndex("subkey", subkey, 0), "prop": f.keysIndex("prop", prop, 0), "other": f.keysIndex("other", other, 0)};
-};
-
-miu$._GETlog.messageTable.prototype.pushResult = function(tST, efflist, msglist, li) {
-	var e = miu$._HTMLfunc.setInfo(efflist.rlist, tST, efflist.target, msglist.sName.user, efflist.response);
-	(el => {el.parentNode.insertBefore(e, el);})(msglist.elembr[efflist.i]);
-	li.info = {"userStatus": miu$._GETlog.infoStatus(msglist.sName.user, tST), "targetStatus": miu$._GETlog.infoStatus(efflist.target, tST)};
+miu$._GETlog.turnMessageTable.prototype.pushResult = function(tST, user, target, li) {
+	li.info = {"userStatus": miu$._GETlog.infoStatus(user, tST), "targetStatus": miu$._GETlog.infoStatus(target, tST)};
 	return li;
 };
 
-//////////////////////////////////////////////////////////////
-	//
-miu$._GETlog.statehpsp = function(prop, user, target, key, add, tST) {
-	var regs = [/ダメージ|減少|低下/, /奪取|強奪/, /増加|上昇|回復/],
-		i = regs.findIndex((v) => {return v.test(prop);}),
-		func = (t) => {if(/SP/.test(key) && (t[key] < 0)) t[key] = 0;};
-	if(i < 0) alert(prop);
+//////////
+miu$._GETlog.turnMessageTable.prototype.state_hpsp = function(prop, user, target, key, add, tST) {
+	const regs = [/ダメージ|減少|低下/, /奪取|強奪/, /増加|上昇|回復/],
+		func = t => {if(/sp/.test(key) && (t[key] < 0)) t[key] = 0;};
+	let i = regs.findIndex(v => {return v.test(prop);});
+	if(i < 0) alert("state_hpsp : " + prop);
 	if(--i) {
 		tST[target].state[key] += add * i;
 		func(tST[target].state);
@@ -1381,486 +1017,117 @@ miu$._GETlog.statehpsp = function(prop, user, target, key, add, tST) {
 		tST[user].state[key] += add;
 		target = user;
 	}
-	if(!/M../.test(key) && (tST[target].state[key] > tST[target].state["M" + key])) {
-		tST[target].state[key] = tST[target].state["M" + key];
-	}
+	if(!/M../.test(key) && (tST[target].state[key] > tST[target].state["M" + key])) tST[target].state[key] = tST[target].state["M" + key];
 };
 
-miu$._GETlog.count = function(tST, prop, key, target) {
-	var f = new miu$._Flag.addressList(tST),
-		key = f.key[f.getIndex(key)][0],
-		i = [[3], [6, 7], [8]].findIndex((v) => {return v.find((v) => {return v === f.getIndex(prop);});});
+miu$._GETlog.turnMessageTable.prototype.count = function(prop, key, target) {
+	const f = new miu$._Flag.addressList(this.tST),
+		k = f.key[f.getIndex(key)][0],
+		i = [[6], [9, 10], [11]].findIndex(v => {return v.find(v => {return v === f.getIndex(prop);});});
 	if(i) {
-		tST[target].stateCount[key][i-1]++;
+		this.tST[target].stateCount[k][i-1]++;
 	} else {
 		//効果が無かった
 	}
 };
 
-miu$._GETlog.statenMHP = function(tST, prop, user, target, add, slv, type, pt, spec) {
-	var regs = [/減少|低下/, /奪取|強奪/, /増加|上昇/],
-		i = regs.findIndex((v) => {return v.test(prop);}),
-		func = {}, result, lvhosei = 0;
-	slv = slv ? slv : new Array(50).fill(0);
-	func.MHP = (MHP, c) => {
-		var x = [0.1, 0.04],
-			s = slv;
-		x = x.find((x) => {
-			if(checkObject(slv, "Array")) {
-				s = slv.findIndex((u, lv) => {return func.Math(MHP, lv, c, x) === add;});
-				return (s !== -1);
-			} else {
-				return func.Math(MHP, slv, c, x) === add;
-			}
-		});
-		slv = s;
-		if(x) {
-			return x;
-		} else {
-			return alert(target + ": nMHPが計算できませんでした");
-		}
-	};
-	func.Math = (MHP, lv, c, x) => {return Math.floor(Math.floor(MHP * x) * (1 + (lv + lvhosei) / 10) / c);};
-	func.hosei = (v) => {
-		var lv = 0;
-		if(/全/.test(v[0])) {
-			if(/味|敵/.test(v[0])) {
-				lv = pt[tST[target].PTid];
-			} else {
-				pt.forEach(v => {lv += v;});
-				if(/他/.test(v[0])) --lv;
-			}
-		}
-		return lv;
-	};
-	func.zenhosei = h => {
-		if(h > 0) h = (h === 1) ? 4 : (h === 2) ? 2 : (h === 3) ? 1 : (20 / h - 5);
-		return h;
-	};
-	spec.forEach((v,i) => {
-		if(!(i % 2) && /MHP/.test(v[1])) {
-			lvhosei = func.hosei(v[0]);
-		}
-	});
-	lvhosei = func.zenhosei(lvhosei);
-	if(--i) {
-		result = func.MHP(tST[target].state.MHP, tST[target].stateCount.MHP[0]);
-		result = func.Math(tST[target].state.nMHP, slv, tST[target].stateCount.MHP[0], result);
-		tST[target].state.nMHP += result * i;
-	} else {//奪取|強奪
-		tST[target].state.nHMP += -add;
-		tST[user].state.nMHP += add;
-	}
-};
-
-miu$._GETlog.specSplit = function(efflist) {
-	var i = efflist.response.split(/,/),
-		spec;
-	for(i = i[i.length - 1] - 1; 0 < i; --i) {
-		spec = efflist.rlist[i].spec;
-		if(spec) break;
-	}
-	if(!spec) return;
-	spec = spec.split(/(\&|\+)/);
-	spec.forEach((v,i,a) => {
-		var n, t;
-		if(!(i % 2)) {
-			v = v.split(/:/);
-			if(v.length === 1) v = ["対" , v[0]];
-			t = v[0].split(/(\d*)$/);
-			if(t.length > 1) t.length--;
-			n = parseInt(t[1], 10);
-			if(!n) n = 1;
-			t[1] = n;
-			v[0] = t;
-		}
-		a[i] = v;
-	});
-	return spec;
-};
-
-//////ログの整形///////////////////////////////////////////////
-
-
-
 
 //////////////////////////////////////////////////////////////
 // html
 //
-
 miu$._HTMLfunc = {};
 
-miu$._HTMLfunc.init = function() {
-	var e = document.createElement('div'),
-		bodyNode = document.body;
-	e.id = Scriptname;
-	bodyNode.appendChild(e);
+miu$._HTMLfunc.top_element = function() {
+	return miu$._HTMLfunc.createANDappendChild('div', doc.body, function(e) {
+		e.id = ScriptName;
+	});
+};
+
+miu$._HTMLfunc.open_Button = function(top_element) {
+	return miu$._HTMLfunc.createANDappendChild('div', top_element, function(e) {
+		const tx = "_openlight";
+		e.id = "open_Button";
+		e.textContent = "ログ取得";
+		e.addEventListener('mouseenter', function() {this.classList.add(tx);}, false);
+		e.addEventListener('mouseleave', function() {this.classList.remove(tx);}, false);
+	});
+};
+
+miu$._HTMLfunc.createANDappendChild = function(t, elem, func) {
+	const e = doc.createElement(t);
+	func(e);
+	elem.appendChild(e);
 	return e;
 };
 
-miu$._HTMLfunc.getlog = function(top_element) {
-	var e = document.createElement('div');
-	e.id = 'open_Button';
-	e.textContent = "ログ取得";
-	e.addEventListener('mouseenter', function() {
-		this.classList.add("_openlight");
-	}, false);
-	e.addEventListener('mouseleave', function() {
-		this.classList.remove("_openlight");
-	}, false);
-	top_element.appendChild(e);
-	return e;
-};
+//miu$._HTMLfunc.alpha = 0.8;
 
-miu$._HTMLfunc.closeInfo = 0;
-miu$._HTMLfunc.alpha = 0.8;
-
-//////Listener////////////////////////////////////////////////
-miu$._HTMLfunc.listener = {};
-
-miu$._HTMLfunc.listener.lightadd = function() {
-	this.classList.add("_closelight");
-};
-
-miu$._HTMLfunc.listener.lightremove = function() {
-	this.classList.remove("_closelight");
-};
-
-miu$._HTMLfunc.listener.closelight = function(e) {
-	e.addEventListener('mouseenter', miu$._HTMLfunc.listener.lightadd, false);
-	e.addEventListener('mouseleave', miu$._HTMLfunc.listener.lightremove, false);
-};
-
-//////information_insert//////////////////////////////////////
-miu$._HTMLfunc.sethpsp = function(tST, target, user, prop) {
-	var e = document.createElement('span'),
-		name = [target, user],
-		hp = name.map((v) => {
-			var e = document.createElement('span');
-				e.classList.add(Scriptname + "_bold");
-				e.textContent = tST[v].state.HP;
-				if(tST[v].state.HP < 0) e.classList.add(Scriptname + "_red");
-			return e;
-		});
-	e.innerHTML = target + "&nbsp;[ hp : " + hp[0].outerHTML + " / " + tST[target].state.MHP + " &nbsp;sp : " + tST[target].state.SP + " ]";
-	if(/奪取|強奪/.test(prop)) {
-		e.innerHTML += "&nbsp;&nbsp;" + user + "&nbsp;[ hp : " + hp[1].outerHTML + " / " + tST[user].state.MHP + " &nbsp;sp : " + tST[user].state.SP + " ]";
-	}
-	e.classList.add(Scriptname + "_inserthpsp");
-	return e;
-};
-
-miu$._HTMLfunc.setInfo = function(logdata, tST, target, user, response) {
-	var e = document.createElement('span');
-	e.textContent = "info";
-	e.classList.add(Scriptname + "_insertinfo");
-	e.addEventListener('click', function(evl) {
-		var information_Window = document.getElementById('information_Window');
-		if(miu$._HTMLfunc.closeInfo) miu$._HTMLfunc.closeInfo.classList.remove(Scriptname + "_infoclick");
-		miu$._HTMLfunc.closeInfo = this;
-		this.classList.add(Scriptname + "_infoclick");
-		information_Window.style.display = "block";
-		miu$._HTMLfunc.getInfo(tST, logdata, information_Window, response);
-		information_Window.style.left = evl.pageX;
-		information_Window.style.top = evl.pageY;
-	}, false);
-	return e;
-};
-
-miu$._HTMLfunc.getInfo = function(tST, logdata, information_Window, response) {
-	var info_box = document.getElementById(((v) => {return v;})(Scriptname + "_information_window_box")),
-		close = info_box.getElementsByClassName(((v) => {return v;})(Scriptname + "_close"))[0],
-		main_box = document.getElementById('information_window_main'),
-		information_window_sub = document.getElementById(((r) => {return r;})(Scriptname + "_information_window_sub")),
-		information_window_info = document.getElementById('information_window_info'),
-		e = {}, spec = [], logd = [];
-	console.log(logdata);
-	console.log(response);
-	main_box.textContent = "";
-	information_window_sub.style.display = "";
-	logdata.forEach((v,i) => {if(!Array.isArray(v) && !checkObject(v.spec, "Undefined")) spec.push(i);});
-	response = response.split(/\,/);
-	response = response[response.length - 1];
-	e.skill = document.createElement('div');
-	e.skill.classList.add("_info_box_skill");
-	e.skill.innerHTML = ((t, res) => {
-		res = spec.findIndex((v) => {return response < v;}) - 1;
-		res = (res < 0) ? spec.length - 1 : res;
-		t += "<div class=\"" + Scriptname + "_italic\"><span class=\"_info_box_skill_name\">" + logdata[0].id + "</span><span class=\"_info_box_skill_text\">lv " + logdata[0].slv + "</span>";
-		t += "<span class=\"_info_box_skill_text\">" + logdata[0].type + ((logdata[0].type === "A") ? ("(" + logdata[0].nA + ")") : "") + "</span><span class=\"_info_box_skill_text\">" + logdata[0].user + "</span></div>";
-		t += "<div><span class=\"_info_box_skill_text\">" + ((sp) => {return (logdata[0].type === "A") ? (sp) ? -sp * (sp + 1) / 2 * 10 : "-" : "-";})(spec.length) + "/sp</span>";
-		t += "<span class=\"_info_box_skill_text\">" + ((t) => {
-			spec.forEach((v,i) => {t += (() => {return (i > 0) ? "→" : "◇";})() + "</span><span" + (() => {return (i === res) ? " class=\"" + Scriptname + "_bold\"" : "";})() + ">" + logdata[v].spec + "</span><span>";});
-			return t;
-		})("") + "</span></div>";
-		return t;
-	})("");
-	main_box.appendChild(e.skill);
-	e.eff = document.createElement('div');
-	e.eff.classList.add("_info_box_skill");
-	e.el = {};
-	(() => {
-		var f = new miu$._Flag.addressList(tST),
-			txarr = {"add": "add", "key": "key", "subkey": "subkey", "prop": "prop", "other": "other", "target": "character", "info": "-"},
-			te = {"table": document.createElement('table'), "thead": document.createElement('thead'), "tbody": document.createElement('tbody'), "tr": {}, "td": {}};
-		e.el.table = te;
-		e.eff.appendChild(te.table);
-		te.table.appendChild(te.thead);
-		te.table.appendChild(te.tbody);
-		te.table.classList.add("_info_box_skill_table");
-		logd[0] = txarr;
-		if(Array.isArray(logdata[response])) {
-			logdata[response].forEach((o) => {logd.push(o);});
-		} else {
-			logd.push(logdata[response]);
-		}
-		logd.forEach((v,i) => {
-			var bh = (i) ? "tbody" : "thead";
-			te.tr[i] = document.createElement('tr');
-			te[bh].appendChild(te.tr[i]);
-			te.td[i] = {};
-			Object.keys(txarr).forEach((t) => {
-				var text = (i) ? logd[i][t] : t;
-				if(Array.isArray(text)) {
-					text = f[txarr[t]][f.getIndex(text)][0];
-					if(/target/.test(t)) text = text.split(/\d+\s:\s/)[1];
-				}
-				te.td[i][t] = document.createElement('td');
-				te.td[i][t].textContent = text;
-				te.tr[i].appendChild(te.td[i][t]);
-			});
-		});
-	})();
-	main_box.appendChild(e.eff);
-	((ef) => {
-		var func = {}, efo;
-		func.mouseenter = function() {this.textContent = "▶ open ◀";};
-		func.mouseleave = function() {this.textContent = "▷ open ◁";};
-		func.prev = function(x) {
-			x.textContent = "▷ open ◁";
-			x.classList.remove(Scriptname + "_info_openclose_click");
-			x.addEventListener('mouseenter', func.mouseenter, false);
-			x.addEventListener('mouseleave', func.mouseleave, false);
-		};
-		Object.keys(ef).forEach((v,i) => {
-			if(i) {
-				ef[v].info.classList.add(Scriptname + "_info_openclose");
-				func.prev(ef[v].info);
-				ef[v].info.addEventListener('click', function() {
-					if(this.textContent !== "◀ open ▶") {
-						if(efo) func.prev(efo);
-						information_window_sub.style.display = "block";
-						efo = this;
-						this.textContent = "◀ open ▶";
-						efo.classList.add(Scriptname + "_info_openclose_click");
-						efo.removeEventListener('mouseenter', func.mouseenter, false);
-						efo.removeEventListener('mouseleave', func.mouseleave, false);
-						miu$._HTMLfunc.informationWindowSub(logd[i].info, information_window_info, logd[i].target, logd[i].user, tST);
-					} else {
-						func.prev(efo);
-						information_window_sub.style.display = "";
-						efo = undefined;
-					}
-				}, false);
-			}
-		});
-	})(e.el.table.td);
-	miu$._HTMLfunc.listener.closelight(close);
-	close.addEventListener('click', () => {
-		information_Window.style.display = "none";
-		miu$._HTMLfunc.closeInfo.classList.remove(Scriptname + "_infoclick");
-	}, false);
-};
-
-miu$._HTMLfunc.informationWindowSub = function(e, top, target, user, tST) {
-	var flag = new miu$._Flag.addressList(tST),
-		el = {"otherkey": "div", "otherlist": "ul", "utStatus": "div", "userStatus": "div", "targetStatus": "div"},
-		tu = {"target": target, "user": user},
-		otherkey = {}, func = {};
-	func.text = (a,b) => {return (a + " : <span class=\"" + Scriptname + "_nomaltext\">" + b + "</span>");};
-	func.list = (a,e) => {
-		var ul = document.createElement('ul');
-		e.appendChild(ul);
-		Object.keys(a).forEach((v) => {
-			var li = document.createElement('li');
-			ul.appendChild(li);
-			if(checkObject(a[v], "Object")) {
-				li.innerHTML = func.text(v, "▽");
-				func.list(a[v], li);
-			} else {
-				li.innerHTML = func.text(v, a[v]);
-			}
-		});
-	};
-	top.textContent = "";
-	Object.keys(el).forEach((v) => {
-		el[v] = document.createElement(el[v]);
-	});
-	top.appendChild(el.otherkey);
-	el.otherkey.appendChild(el.otherlist);
-	top.appendChild(el.utStatus);
-	el.utStatus.appendChild(el.targetStatus);
-	el.utStatus.appendChild(el.userStatus);
-	Object.keys(e).forEach((v) => {
-		if(!/targetStatus|userStatus/.test(v)) {
-			otherkey[v] = document.createElement('li');
-			otherkey[v].innerHTML = func.text(v, e[v]);
-			el.otherlist.appendChild(otherkey[v]);
-		}
-	});
-	el.otherkey.classList.add("_info_sub");
-	el.utStatus.classList.add("_info_sub_nav");
-	el.targetStatus.classList.add("_info_sub");
-	el.userStatus.classList.add("_info_sub");
-	Object.keys(tu).forEach((k) => {
-		var obj = {};
-		obj[k] = flag.getcharacterName(tu[k]);
-		func.list(obj , el[k + "Status"]);
-		func.list(e[k + "Status"] , el[k + "Status"]);
-	});
-};
-
-//////information_Window//////////////////////////////////////
-miu$._HTMLfunc.informationWindow = function(top_element) {
-	var e = ["information_Window", "information_window_main", "information_window_top", "information_window_info", Scriptname + "_information_window_box", Scriptname + "_information_window_sub"],
-		f = [Scriptname + "_close", Scriptname + "_textinfo"],
-		ev = {}, fv = {}, func = {}, xy = {"x": 0, "y": 0};
-	e.forEach((k) => {
-		ev[k] = document.createElement('div');
-		ev[k].id = k;
-	});
-	f.forEach((k) => {
-		fv[k] = document.createElement('div');
-		fv[k].classList.add(k);
-		ev.information_window_top.appendChild(fv[k]);
-	});
-	ev.information_Window.appendChild(ev[Scriptname + "_information_window_box"]);
-	ev.information_Window.appendChild(ev[Scriptname + "_information_window_sub"]);
-	fv[Scriptname + "_textinfo"].textContent = "Informations";
-	fv[Scriptname + "_close"].textContent = "close";
-	ev[Scriptname + "_information_window_box"].style.backgroundColor = "rgba(0,0,0," + (miu$._HTMLfunc.alpha * 0.9) + ")";
-	ev[Scriptname + "_information_window_sub"].style.backgroundColor = "rgba(0,0,0," + (miu$._HTMLfunc.alpha * 0.9) + ")";
-	ev[Scriptname + "_information_window_box"].appendChild(ev.information_window_top);
-	ev[Scriptname + "_information_window_box"].appendChild(ev.information_window_main);
-	ev[Scriptname + "_information_window_sub"].appendChild(ev.information_window_info);
-	top_element.appendChild(ev.information_Window);
-	fv[Scriptname + "_textinfo"].draggable = true;
-	fv[Scriptname + "_textinfo"].addEventListener('mouseenter', function() {
-		this.textContent = "◀ Informations ▶";
-	}, false);
-	fv[Scriptname + "_textinfo"].addEventListener('mouseleave', function() {
-		this.textContent = "Informations";
-	}, false);
-	func.mouseup = function() {
-		information_Window.removeEventListener('mouseup', func.mouseup, false);
-		information_Window.removeEventListener('touchend', func.mouseup, false);
-		document.body.removeEventListener('mousemove', func.mousemove, false);
-		document.body.removeEventListener('touchmove', func.mousemove, false);
-		information_Window.classList.remove("_info_drag");
-		ev[Scriptname + "_information_window_box"].style.backgroundColor = "rgba(0,0,0," + (miu$._HTMLfunc.alpha * 0.9) + ")";
-		ev[Scriptname + "_information_window_sub"].style.backgroundColor = "rgba(0,0,0," + (miu$._HTMLfunc.alpha * 0.9) + ")";
-	};
-	func.mousemove = function(evl) {
-		var event = (evl.type === "mousemove") ? evl : evl.changedTouches[0];
-		evl.preventDefault();
-		information_Window.style.left = event.pageX - xy.x + "px";
-		information_Window.style.top = event.pageY - xy.y + "px";
-		information_Window.addEventListener('mouseup', func.mouseup, false);
-		information_Window.addEventListener('touchend', func.mouseup, false);
-		document.body.addEventListener('mouseleave', func.mouseup, false);
-		document.body.addEventListener('touchleave', func.mouseup, false);
-	};
-	func.mousedown = function(evl) {
-		var event = (evl.type === "mousedown") ? evl : evl.changedTouches[0];
-		information_Window.classList.add("_info_drag");
-		ev[Scriptname + "_information_window_box"].style.backgroundColor = "rgba(0,0,0," + (miu$._HTMLfunc.alpha * 0.9 / 2) + ")";
-		ev[Scriptname + "_information_window_sub"].style.backgroundColor = "rgba(0,0,0," + (miu$._HTMLfunc.alpha * 0.9 / 2) + ")";
-		xy.x = event.pageX - information_Window.offsetLeft;
-		xy.y = event.pageY - information_Window.offsetTop;
-		document.body.addEventListener('mousemove', func.mousemove, false);
-		document.body.addEventListener('touchmove', func.mousemove, false);
-	};
-	fv[Scriptname + "_textinfo"].addEventListener('mousedown', func.mousedown, false);
-	fv[Scriptname + "_textinfo"].addEventListener('touchstart', func.mousedown, false);
-	return ev;
-};
-
-//////overlay_window/////////////////////////////////////////
+//////overlay_window//////////////////////////////////////////
 miu$._HTMLfunc.mainWindow = function(top_element, open_Button, data) {
-	var input = miu$._HTMLfunc.input(),
-		e = ["overlay_Window", "top_overlay", "overlay_close", "opacity", "menu_tab", "main_area"],
-		ev = {}, func = {};
-	e.forEach((k) => {
-		ev[k] = document.createElement('div');
-		ev[k].id = k;
+	const e = {"overlay_Window": 0, "top_overlay": 0, "overlay_close": 0, "opacity": 0, "menu_tab": 0, "main_area": 0};
+	Object.keys(e).forEach(v => {
+		e[v] = doc.createElement('div');
+		e[v].id = v;
 	});
-	func.overlay_opacity = (v) => {
-		var information_window_box = document.getElementById(((r) => {return r;})(Scriptname + "_information_window_box")),
-			information_window_sub = document.getElementById(((r) => {return r;})(Scriptname + "_information_window_sub"));
-		miu$._HTMLfunc.alpha = v;
-		information_window_box.style.backgroundColor = "rgba(0,0,0," + (v * 0.9) + ")";
-		information_window_sub.style.backgroundColor = "rgba(0,0,0," + (v * 0.9) + ")";
-		ev.overlay_Window.style.backgroundColor = "rgba(0,0,0," + v + ")";
+	let alpha = 0.8;
+	const func_overlay_opacity = v => {
+		alpha = v;
+		e.overlay_Window.style.backgroundColor = "rgba(0,0,0," + v + ")";
 	};
-	top_element.appendChild(ev.overlay_Window);
-	ev.overlay_Window.appendChild(ev.top_overlay);
-	ev.overlay_Window.appendChild(ev.main_area);
-	ev.top_overlay.appendChild(ev.overlay_close);
-	ev.top_overlay.appendChild(ev.opacity);
-	ev.top_overlay.appendChild(ev.menu_tab);
-	func.overlay_opacity(miu$._HTMLfunc.alpha);
-	ev.overlay_close.textContent = "close";
-	ev.opacity.textContent = "透明度 :";
-	ev.opacity.appendChild(input);
+	top_element.appendChild(e.overlay_Window);
+	e.overlay_Window.appendChild(e.top_overlay);
+	e.overlay_Window.appendChild(e.main_area);
+	e.top_overlay.appendChild(e.overlay_close);
+	e.top_overlay.appendChild(e.opacity);
+	e.top_overlay.appendChild(e.menu_tab);
+	func_overlay_opacity(alpha);
+	e.overlay_close.textContent = "close";
+	e.opacity.textContent = "透明度 :";
+	const input = miu$._HTMLfunc.createANDappendChild('input', e.opacity, (el) => {
+		el.type = "number";
+		el.max = 1;
+		el.min = 0;
+		el.step = 0.01;
+		el.value = alpha;
+	});
 	input.addEventListener('change', () => {
-		func.overlay_opacity(input.value);
+		func_overlay_opacity(input.value);
 	}, false);
-	miu$._HTMLfunc.menuTab(ev, open_Button, data);
-};
-	//input
-miu$._HTMLfunc.input = function() {
-	var e = document.createElement('input');
-	e.type = "number";
-	e.max = 1;
-	e.min = 0;
-	e.step = 0.01;
-	e.value = miu$._HTMLfunc.alpha;
-	return e;
+	miu$._HTMLfunc.menuTab(e, open_Button, data);
 };
 
-miu$._HTMLfunc.menuTab = function(ev, open_Button, data) {
-	var v = ["view_status", "view_takeLog", "view_skillLog", "view_setting"],
-		m = ["ステータス", "ログ", "スキル", "設定"],
-		view = {}, menu = {}, onlist = {}, func = {},
-		menuOn = 0;
-	v.forEach((k) => {
-		view[k] = document.createElement('div');
-		view[k].id = k;
-		view[k].classList.add(Scriptname + "_view");
-		ev.main_area.appendChild(view[k]);
+miu$._HTMLfunc.menuTab = function(e, open_Button, data) {
+	const view = {"view_takeLog": 0, "view_setting": 0};
+	const menu = {"ログ": 0, "設定": 0};
+	const v = Object.keys(view);
+	const m = Object.keys(menu);
+	const onlist = {};
+	let menuOn = 0;
+	v.forEach(k => {
+		view[k] = miu$._HTMLfunc.createANDappendChild('div', e.main_area, (el) => {
+			el.id = k;
+			el.classList.add(ScriptName + "_view");
+		});
 		onlist[k] = 0;
-		miu$._HTMLfunc.view[k](data, k, onlist, view[k]);
+		miu$._HTMLfunc["v_"+ k](data, k, onlist, view[k]);
 	});
-	m.forEach((k) => {
-		menu[k] = document.createElement('span');
-		menu[k].classList.add(Scriptname + "_menu");
-		menu[k].textContent = k;
-		ev.menu_tab.appendChild(menu[k]);
+	m.forEach(k => {
+		menu[k] = miu$._HTMLfunc.createANDappendChild('span', e.menu_tab, (el) => {
+			el.classList.add(ScriptName + "_menu");
+			el.textContent = k;
+		});
 	});
-	miu$._HTMLfunc.listener.closelight(ev.overlay_close);
-	open_Button.addEventListener('click', () => {
-		ev.overlay_Window.style.display = "flex";
-	}, false);
-	ev.overlay_close.addEventListener('click', () => {
-		ev.overlay_Window.style.display = "none";
-	}, false);
-	func.viewlight_chenge = (before, after) => {
+	e.overlay_close.addEventListener('mouseenter', function() {this.classList.add("_closelight");}, false);
+	e.overlay_close.addEventListener('mouseleave', function() {this.classList.remove("_closelight");}, false);
+	open_Button.addEventListener('click', () => {e.overlay_Window.classList.add("_disp_f");}, false);
+	e.overlay_close.addEventListener('click', function() {e.overlay_Window.classList.remove("_disp_f");}, false);
+	const func_chenge_viewlight = (before, after) => {
 		menu[m[before]].classList.remove("_menulight");
 		menu[m[after]].classList.add("_menulight");
-		view[v[before]].style.display = "none";
-		view[v[after]].style.display = "block";
+		view[v[before]].classList.remove("_disp_b");
+		view[v[after]].classList.add("_disp_b");
 	};
-	func.viewlight_chenge(menuOn, menuOn);
+	func_chenge_viewlight(menuOn, menuOn);
 	m.forEach((k,i) => {
 		menu[k].addEventListener('mouseenter', function() {
 			this.classList.add("_openlight");
@@ -1873,324 +1140,129 @@ miu$._HTMLfunc.menuTab = function(ev, open_Button, data) {
 		menu[k].addEventListener('click', function() {
 			if(i !== menuOn) {
 				this.classList.remove("_menusublight");
-				func.viewlight_chenge(menuOn, i);
+				func_chenge_viewlight(menuOn, i);
 				menuOn = i;
 			}
 		}, false);
 	});
 };
 
-miu$._HTMLfunc.view = {};
-//////////////////////////////////////////////////////////////
-miu$._HTMLfunc.view.view_html = function() {
-	this.tr = "<tr>";
-	this._tr = "</tr>";
-	this._td = "</td>";
-	this.td0 = "<td class=\"v_status_td_00\">";
-	this.td1 = "<td class=\"v_status_td_01\">";
-	this.td2 = "<td class=\"v_status_td_02\">";
-	this.td3 = "<td class=\"v_status_td_03\">";
-};
-
-miu$._HTMLfunc.view.getPage = function(url, func1, func2) {
-	var x = new XMLHttpRequest();
-	x.open("GET", url, true);
-	x.responseType = "document";
-	x.onreadystatechange = () => {
-		if(x.readyState === 4) {
-			if(x.status === 200 && x.response !== null) {
-				if(func1) return func1(x.response);
-			} else {
-				if(func2) return func2(x.status);
-			}
-		}
-	};
-	x.send();
-};
-
-//////view_status/////////////////////////////////////////////
-miu$._HTMLfunc.view.view_status = function(data, key, onlist, viewElem) {
-	console.log(key);
-	var area = document.createElement('div'),
-		pts = [] , ids = {}, member = 0;
-	viewElem.appendChild(area);
-	area.classList.add("pt_area");
-	data.acterTable.forEach((v,i) => {
-		pts[i] = document.createElement('div');
-		pts[i].classList.add("pt_area_sub");
-		v.forEach((v) => {
-			var flag = ++member;
-			ids[v] = document.createElement('div');
-			ids[v].classList.add("pt_area_name");
-			ids[v].textContent = data.character[v].Eno + " : " + v;
-			pts[i].appendChild(ids[v]);
-			ids[v].addEventListener('mouseenter', function() {
-				this.classList.add("_pt_sublight");
-			}, false);
-			ids[v].addEventListener('mouseleave', function() {
-				this.classList.remove("_pt_sublight");
-			}, false);
-			ids[v].addEventListener('click', function() {
-				if(onlist[key] & miu$._Flag.GET[flag]) {
-					viewElem.removeChild(viewElem.getElementsByClassName(((t) => {return t;})("pt_area" + flag))[0]);
-					onlist[key] ^= miu$._Flag.GET[flag];
-					this.classList.remove("_pt_light");
-				} else {
-					onlist[key] |= miu$._HTMLfunc.view.view_status_character(data, key, onlist, viewElem, flag, v) << flag;
-					this.classList.add("_pt_light");
-				}
-			}, false);
-		});
-		area.appendChild(pts[i]);
-	});
-};
-
-miu$._HTMLfunc.view.view_status_character = function(data, key, onlist, viewElem, flag, name) {
-	var area = document.createElement('div'),
-		f = [Scriptname + "_close", "d0", "d1", "d2", "d3"],
-		t = ["t0", "t1", "t2", "t3"],
-		eno = data.character[name].Eno,
-		h = new miu$._HTMLfunc.view.view_html(),
-		fv = {}, tv = {}, e = {}, v_func = {};
-	viewElem.appendChild(area);
-	area.classList.add("v_status_area");
-	area.classList.add("pt_area" + flag);
-	f.forEach((k) => {
-		fv[k] = document.createElement('div');
-		fv[k].classList.add(k);
-		area.appendChild(fv[k]);
-	});
-	t.forEach((k,i) => {
-		var tbody = document.createElement('tbody');
-		tv[k] = document.createElement('table');
-		tv[k].classList.add(Scriptname + "_table");
-		tv[k].appendChild(tbody);
-		fv[f[i+1]].appendChild(tv[k]);
-	});
-	v_func[0] = (t) => {
-		var func = (a,b) => {return (h.tr + h.td1 + a + " :" + h._td + h.td0 + b + h._td + h._tr);};
-		t += func("Eno", eno) + func("ID", name);
-		return t;
-	};
-	v_func[1] = (t, row) => {
-		var func = (a) => {return (h.tr + h.td1 + a + " :" + h._td + h.td2 + "<input class=\"v_st_input\" type=\"number\" name=\"" + a + "\" min=\"0\" step=\"1\" value=\"" + data.character[name].status[a] + "\">" + h._td);};
-		t += func("ST") + "<td class=\"v_status_td_03\" rowspan=\"2\" colspan=\"2\">";
-		if(eno) {
-			t += "<input class=\"v_status_get\" type=\"button\" value=\"" + ((checkObject(miu$._GetStatus[eno], "Undefined")) ? "get" : "complete") + "\">";
-		} else {
-			row = 4;
-		}
-		t += h._td + h._tr;
-		t += func("AG") + h._tr;
-		t += func("DX") + "<td class=\"v_status_td_01\" rowspan=\"" + row + "\" colspan=\"2\" style=\"vertical-align: top;\">" + h._td + h._tr;
-		t += func("IN") + h._tr;
-		t += func("VT") + h._tr;
-		t += func("MN");
-		if(eno) t += h.td1 + "減衰 :" + h._td + h.td2 + "<input class=\"v_st_input\" type=\"number\" name=\"減衰率\" max=\"1\" min=\"0\" step=\"0.001\" value=\"" + data.character[name]["減衰率"] + "\">" + h._td;
-		t += h._tr;
-		return t;
-	};
-	v_func[2] = (t,d) => {
-		var func = (a,st) => {
-				var style = (v) => {return ("style=\"color: rgb(" + v + ")\"");},
-					color = (st[0] > st[1]) ? style("220,128,128") : (st[0] < st[1]) ? style("128,128,220") : "";
-				return (h.tr + h.td1 + a + " :" + h._td + h.td2 + "<span " + color + ">" + st[0] + "</span>" + h._td + h.td1 + "(" + a + ") :" + h._td + h.td2 + st[1] + h._td + h._tr);
-			},
-			psp = Object.keys(d.status).reduce((pre, v) => {return pre + d.status[v];}, 0);
-		psp = Math.floor(Math.pow(psp / 6, 1.33) / 4 * d["減衰率"] + 1);
-		t += func("PSP", [psp, d.PSP]) + func("MHP", [d.statusBt.MHP, d.startMHP]) + func("MSP", [d.statusBt.MSP, d.startMSP]);
-		return t;
-	};
-	v_func[3] = (t) => {
-		var func = (a) => {return (h.td1 + a + " :" + h._td + h.td2 + data.character[name].statusBt[a] + h._td);},
-			func2 = (a,b) => {return (h.tr + func(a) + func(b) + h._tr);};
-		t += func2("AT", "MAT") + func2("DF", "MDF");
-		t += func2("HIT", "MHIT") + func2("EVA", "MEVA");
-		t += func2("HEAL", "SPD") + h.tr + func("CRI") + h._tr;
-		return t;
-	};
-	v_func[4] = (el) => {
-		var val = parseFloat(el.value),
-			key = el.name,
-			add = (key === "減衰率") ? data.character[name] : data.character[name].status;
-		add[key] = val;
-	};
-	v_func[5] = () => {
-		data.character[name].stBtReset();
-		tv[t[2]].children[0].innerHTML = v_func[2]("", data.character[name]);
-		tv[t[3]].children[0].innerHTML = v_func[3]("");
-	};
-	tv[t[0]].children[0].innerHTML = v_func[0]("");
-	tv[t[1]].children[0].innerHTML = v_func[1]("", 3);
-	v_func[5]();
-	fv[Scriptname + "_close"].textContent = "close";
-	fv[Scriptname + "_close"].addEventListener('click', () => {
-		viewElem.removeChild(area);
-		onlist[key] ^= miu$._Flag.GET[flag];
-		viewElem.getElementsByClassName("pt_area_name")[flag - 1].classList.remove("_pt_light");
-	}, false);
-	miu$._HTMLfunc.listener.closelight(fv[Scriptname + "_close"]);
-	e.input_status_get = tv[t[1]].children[0].getElementsByClassName('v_status_get')[0];
-	e.v_st_input = tv[t[1]].children[0].getElementsByClassName('v_st_input');
-	if(e.input_status_get) e.input_status_get.addEventListener('click', () => {
-		var val = e.input_status_get.value,
-			url = "http://lisge.com/kk/?id=" + eno + "&b=1",
-			setChangeStatus = () => {
-				Array.from(miu$._GetStatus[eno][0].getElementsByClassName('T2')).forEach((v,i) => {
-					e.v_st_input[i].value = parseInt(v.textContent, 10);
-					v_func[4](e.v_st_input[i]);
-				});
-				v_func[5]();
-			};
-		if(val === "get") {
-			e.input_status_get.value = "取得中...";
-			miu$._HTMLfunc.view.getPage(url, (res) => {
-				miu$._GetStatus[eno] = res.getElementsByClassName('TST');
-				if(miu$._GetStatus[eno].length) {
-					setChangeStatus();
-					e.input_status_get.value = "complete";
-				} else {
-					e.input_status_get.value = "none";
-				}
-			}, (state) => {
-				e.input_status_get.value = state;
-			});
-		} else {
-			if(val === "complete") setChangeStatus();
-		}
-	}, false);
-	Array.from(e.v_st_input).forEach((v) => {
-		v.addEventListener('change', () => {
-			v_func[4](v);
-			v_func[5]();
-		}, false);
-	});
-	return 1;
-};
-
 //////view_takeLog////////////////////////////////////////////
-miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
-	console.log(key);
-	var e = {"select_area": "div", "logtop": "div", "preset_select": "select", "preset_text": "input", "preset_button": "input", "preset_delete": "input", "select_main": "div", "select_area2": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "search_box_spec": "input", "select_getter": "div", "select_result": "div", "result_area": "div"},
-		select = {"target": "", "user": "", "key": "", "subkey": "", "prop": "", "other": ""},
-		result = {"select_list": "select", "select_button": "button"},
-		option = {"csv": 0, "passiveCounter": 1, "timeTable": 2},
-		flag = new miu$._Flag.addressList(data.character),
-		rElem = {}, func = {}, r_func = {};
-	func.labelinput = (text, cl, inputtype) => {
-		var el = {"label": "", "input": "", "span": ""};
-		Object.keys(el).forEach((v) => {el[v] = document.createElement(v);});
-		el.label.classList.add("v_" + cl);
-		el.label.appendChild(el.input);
-		el.label.appendChild(el.span);
-		el.input.type = inputtype;
-		el.input.name = cl;
-		el.span.textContent = text;
-		return el;
-	};
-	func.light = function(v) {
-		v.addEventListener('mouseenter', function(){this.classList.add("_pt_sublight");}, false);
-		v.addEventListener('mouseleave', function(){this.classList.remove("_pt_sublight");}, false);
-	};
-	func.create = (e) => {
-		Object.keys(e).forEach((v) => {
-			e[v] = document.createElement(e[v]);
-			e[v].classList.add("v_" + v);
+miu$._HTMLfunc.v_view_takeLog = function(data, key, onlist, viewElem) {
+	const e = {"select_area": "div", "logtop": "div", "preset_select": "select", "preset_text": "input", "preset_button": "input", "preset_delete": "input", "select_main": "div", "select_area2": "div", "checkSelect": "div", "select_right": "div", "search_box": "input", "search_box_spec": "input", "select_getter": "div", "select_result": "div", "result_area": "div"};
+	const select = {"target": 0, "user": 0, "key": 0, "subkey": 0, "prop": 0, "other": 0};
+	const result = {"select_list": "select", "select_button": "input"};
+	const option = {"csv": 0};
+	const rElem = {}, r_func = {};
+	const flag = new miu$._Flag.addressList(data.character);
+	const func_create = e => {
+		Object.keys(e).forEach(v => {
+			e[v] = doc.createElement(e[v]);
+			e[v].classList.add("v_tL_" + v);
 		});
 	};
-	func.create(e);
-	miu$._HTMLfunc.view.view_takeLog_preset(e.preset_select, miu$._JSON.GET.V_log_preset);
+	const func_light = function(v) {
+		v.addEventListener('mouseenter', function() {this.classList.add("_text_sublight");}, false);
+		v.addEventListener('mouseleave', function() {this.classList.remove("_text_sublight");}, false);
+	};
+	const func_labelinput = (text, cl, inputtype) => {
+		const e = {"label": 0, "input": 0, "span": 0};
+		Object.keys(e).forEach(v => {e[v] = doc.createElement(v);});
+		e.label.classList.add("v_tL_" + cl);
+		e.label.appendChild(e.input);
+		e.label.appendChild(e.span);
+		e.input.type = inputtype;
+		e.input.name = cl;
+		e.span.textContent = text;
+		return e;
+	};
+	func_create(e);
+	func_create(result);
+	miu$._HTMLfunc._presetLoad(e.preset_select, miu$._JSON.GET.V_log_preset);
 	e.preset_text.type = "text";
-	e.preset_text.placeholder = "登録名";
+	e.preset_text.placeholder = "プリセット登録名";
 	e.preset_text.spellcheck = false;
 	e.preset_button.type = "button";
 	e.preset_button.value = "登録";
 	e.preset_delete.type = "button";
 	e.preset_delete.value = "削除";
-	e.checkSelect.appendChild(e.search_box);
 	e.search_box.type = "search";
-	e.search_box.placeholder = "スキル検索";
+	e.search_box.placeholder = "スキル名検索";
 	e.search_box.spellcheck = false;
-	e.checkSelect.appendChild(e.search_box_spec);
 	e.search_box_spec.type = "search";
-	e.search_box_spec.placeholder = "効果一致検索";
+	e.search_box_spec.placeholder = "スキル効果検索";
 	e.search_box_spec.spellcheck = false;
-	Object.keys(select).forEach((v) => {
-		var el = {"logGetSelect": "div", "logGetTitle": "div", "hide": "div"},
-			span = {"icon": "▶", "name": ("." + v)};
-		func.create(el);
-		Object.keys(span).forEach((v) => {
-			var e = document.createElement('span');
-			e.textContent = span[v];
-			e.classList.add(v);
-			el.logGetTitle.appendChild(e);
-			span[v] = e;
-		});
-		(() => {
-			var d = document.createElement('div'),
-				span = {"[ 全選択 ]": "", "[ 全解除 ]": ""};
-			Object.keys(span).forEach((v) => {
-				var s = document.createElement('span');
-				s.classList.add("_input_allchecked");
-				s.textContent = v;
-				d.appendChild(s);
-				span[v] = s;
-				func.light(s);
-				s.addEventListener('click', function() {
-					var bool = /選択/.test(v);
-					Array.from(this.parentNode.parentNode.getElementsByTagName('input')).forEach((v) => {v.checked = bool;});
-				}, false);
+	e.checkSelect.appendChild(e.search_box);
+	e.checkSelect.appendChild(e.search_box_spec);
+	Object.keys(select).forEach(k => {
+		const elogGet = {"logGetSelect": "div", "logGetTitle": "div", "hide": "div"};
+		const span = {"icon": "▶", "name": ("." + k)};
+		func_create(elogGet);
+		Object.keys(span).forEach(k => {
+			span[k] = miu$._HTMLfunc.createANDappendChild('span', elogGet.logGetTitle, el => {
+				el.textContent = span[k];
+				el.classList.add(k);
 			});
-			el.hide.appendChild(d);
-		})();
-		if(/target|user/.test(v)) {
-			flag.character.forEach((v) => {
-				var d = document.createElement('div'),
-					il = func.labelinput(v[1], "logGet_pc", "checkbox");
-				il.input.checked = true;
-				d.appendChild(il.label);
-				el.hide.appendChild(d);
-				func.light(d);
+		});
+		miu$._HTMLfunc.createANDappendChild('div', elogGet.hide, d => {
+			["[ 全選択 ]", "[ 全解除 ]"].forEach(k => {
+				miu$._HTMLfunc.createANDappendChild('span', d, s => {
+					s.classList.add("_input_allchecked");
+					s.textContent = k;
+					func_light(s);
+					s.addEventListener('click', function() {
+						const b = /選択/.test(k);
+						Array.from(this.parentNode.parentNode.getElementsByTagName('input')).forEach(v => {v.checked = b;});
+					}, false);
+				});
+			});
+		});
+		if(/target|user/.test(k)) {
+			flag.character.forEach(v => {
+				miu$._HTMLfunc.createANDappendChild('div', elogGet.hide, d => {
+					const il = func_labelinput(v[1], "logGet_pc", "checkbox");
+					il.input.checked = true;
+					d.appendChild(il.label);
+					func_light(d);
+				});
 			});
 		} else {
-			var d = document.createElement('div');
-			flag[v].forEach((v,i) => {
-				var il = func.labelinput(v[1], "logGet_st", "checkbox");
+			let d = 0;
+			flag[k].forEach((v,i) => {
+				const il = func_labelinput(v[1], "logGet_st", "checkbox");
 				il.input.checked = true;
 				if((i + 1) % 2) {
-					d = document.createElement('div');
-					el.hide.appendChild(d);
+					d = miu$._HTMLfunc.createANDappendChild('div', elogGet.hide, () => {});
 				}
 				d.appendChild(il.label);
-				func.light(il.label);
+				func_light(il.label);
 			});
 		}
-		func.light(el.logGetTitle);
-		el.logGetTitle.addEventListener('click', function(){
+		func_light(elogGet.logGetTitle);
+		elogGet.logGetTitle.addEventListener('click', function() {
 			if(span.icon.textContent === "▶") {
 				span.icon.textContent = "▽";
-				this.nextSibling.classList.add("_display_open");
+				this.nextSibling.classList.add("_disp_b");
 			} else {
 				span.icon.textContent = "▶";
-				this.nextSibling.classList.remove("_display_open");
+				this.nextSibling.classList.remove("_disp_b");
 			}
 		}, false);
-		el.logGetSelect.appendChild(el.logGetTitle);
-		el.logGetSelect.appendChild(el.hide);
-		e.checkSelect.appendChild(el.logGetSelect);
-		select[v] = el;
+		elogGet.logGetSelect.appendChild(elogGet.logGetTitle);
+		elogGet.logGetSelect.appendChild(elogGet.hide);
+		e.checkSelect.appendChild(elogGet.logGetSelect);
+		select[k] = elogGet;
 	});
-	func.create(result);
-	Object.keys(option).forEach((v) => {
-		var op = document.createElement('option');
-		op.textContent = v;
-		op.value = option[v];
-		result.select_list.appendChild(op);
-		option[v] = op;
-		rElem[v] = document.createElement('div');
-		rElem[v].classList.add("v_result_hide");
+	Object.keys(option).forEach(v => {
+		option[v] = miu$._HTMLfunc.createANDappendChild('option', result.select_list, op => {
+			op.textContent = v;
+			op.value = option[v];
+		});
+		rElem[v] = doc.createElement('div');
+		rElem[v].classList.add("v_tL_result_hide");
 	});
-	result.select_button.textContent = "search";
+	result.select_button.type = "button";
+	result.select_button.value = "search";
 	viewElem.appendChild(e.select_area);
 	e.select_area.appendChild(e.logtop);
 	e.logtop.appendChild(e.preset_select);
@@ -2205,119 +1277,87 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 	e.select_right.appendChild(e.result_area);
 	e.select_getter.appendChild(result.select_list);
 	e.select_getter.appendChild(result.select_button);
-	(() => {
-	//csv
-		var els = {"syntax": "input", "rText": "textarea", "rCopy": "input", "manual": "div"};
-		Object.keys(els).forEach((v) => {
-			var d = document.createElement(els[v]);
-			d.classList.add("v_" + v);
-			els[v] = d;
-			rElem.csv.appendChild(d);
-		});
+	(() => {//csv
+		const els = {"syntax": "input", "rText": "textarea", "copy_area": "div", "manual": "div"};
+		const cpy = {"rCopy": "input"};
+		Object.keys(els).forEach(v => {els[v] = miu$._HTMLfunc.createANDappendChild(els[v], rElem.csv, d => {d.classList.add("v_tL_csv_" + v);});});
+		Object.keys(cpy).forEach(v => {cpy[v] = miu$._HTMLfunc.createANDappendChild(cpy[v], els.copy_area, d => {d.classList.add("v_tL_csv_" + v);});});
 		els.syntax.type = "search";
 		els.syntax.placeholder = " syntax";
 		els.syntax.spellcheck = false;
-		els.rCopy.type = "button";
-		els.rCopy.value = "copy";
+		cpy.rCopy.type = "button";
+		cpy.rCopy.value = "copy";
 		els.rText.readOnly = true;
 		els.rText.placeholder = " csv";
 		els.rText.spellcheck = false;
 		els.rText.value = "";
 		els.t = (() => {
-			var t = {"table": "table", "tbody": "tbody"},
-				tr = {
-					"turn": [0, "ターン"],
-					"Eno": [1, "Eno"],
-					"char": [1, "キャラクターの名前"],
-					"pt": [1, "PTの残り人数"],
-					"yDam": [1, "与DAM％"],
-					"hDam": [1, "受DAM％"],
-					"yHeal": [1, "与HEAL"],
-					"hHeal": [1, "被HEAL"],
-					"Rnzk": [1, "連続"],
-					"Imp": [1, "Impact"],
-					"stHP": [1, "HP"],
-					"stMHP": [1, "MHP"],
-					"stnMHP": [1, "nMHP"],
-					"stSP": [1, "SP"],
-					"stMSP": [1, "MSP"],
-					"stAT": [1, "AT"],
-					"stMAT": [1, "MAT"],
-					"stDF": [1, "DF"],
-					"stMDF": [1, "MDF"],
-					"stEVA": [1, "EVA"],
-					"stMEVA": [1, "MEVA"],
-					"stHIT": [1, "HIT"],
-					"stMHIT": [1, "MHIT"],
-					"stSPD": [1, "SPD"],
-					"stCRI": [1, "CRI"],
-					"stHEAL": [1, "HEAL"],
-					"H毒": [1, "猛毒"],
-					"H衰": [1, "衰弱"],
-					"H痺": [1, "麻痺"],
-					"H魅": [1, "魅了"],
-					"H呪": [1, "呪縛"],
-					"H乱": [1, "混乱"],
-					"H祝": [1, "祝福"],
-					"H護": [1, "加護"],
-					"%AT": [1, "AT+％"],
-					"%MAT": [1, "MAT+％"],
-					"%DF": [1, "DF+％"],
-					"%MDF": [1, "MDF+％"],
-					"%EVA": [1, "EVA+％"],
-					"%MEVA": [1, "MEVA+％"],
-					"%HIT": [1, "HIT+％"],
-					"%MHIT": [1, "MHIT+％"],
-					"%SPD": [1, "SPD+％"],
-					"%CRI": [1, "CRI+％"],
-					"%HEAL": [1, "HEAL+％"],
-					"Retu": [1, "隊列"],
-					"Syat": [1, "射程"],
-					"id": [0, "スキル名"],
-					"lv": [0, "スキルlv"],
-					"type": [0, "スキルのタイプ(A,P,L)"],
-					"nA": [0, "行動数"],
-					"spec": [0, "スキル説明"],
-					"key": [0, "key"],
-					"subkey": [0, "subkey"],
-					"prop": [0, "prop"],
-					"other": [0, "other"],
-					"cri": [0, "Critical数"],
-					"add": [0, "効果量"]
-				},
-				td = {}, syntaxText = {};
-			Object.keys(t).forEach((v) => {
-				t[v] = document.createElement(t[v]);
-			});
-			Object.keys(tr).forEach((v) => {
-				var bool = tr[v][0],
-					tx = tr[v][1];
-				td[v] = (bool) ? {"t": "", "u": "", "text": ""} : {"s": "", "text": ""};
-				tr[v] = document.createElement('tr');
-				Object.keys(td[v]).forEach((k) => {
-					td[v][k] = document.createElement('td');
-					td[v][k].classList.add("v_manual_table_" + k);
-					if(k === "s") td[v][k].colSpan = 2;
-					td[v][k].textContent = k + v;
-					tr[v].appendChild(td[v][k]);
-					if(k !== "text") {
-						func.light(td[v][k]);
-						syntaxText[td[v][k].textContent] = true;
-						td[v][k].addEventListener('click', function() {
-							var tx = this.textContent;
-							els.syntax.value += (els.syntax.value) ? "," + tx : tx;
-						}, false);
-					} else {
-						td[v][k].textContent = tx + " を表示します。";
-					}
+			const t = {"table": "table", "tbody": "tbody"};
+			const tr = {
+				"turn": [0, "ターン"], "Eno": [1, "Eno"],
+				"char": [1, "キャラクターの名前"], "pt": [1, "PTの残り人数"],
+				"yDam": [1, "与DAM％"], "hDam": [1, "受DAM％"],
+				//"yHeal": [1, "与HEAL"], "hHeal": [1, "被HEAL"],
+				//"Rnzk": [1, "連続"],
+				"Imp": [1, "Impact"],
+				"stHP": [1, "HP"], "stMHP": [1, "MHP"],
+				"stnMHP": [1, "nMHP"],"stSP": [1, "SP"],
+				"stMSP": [1, "MSP"],
+				//"stAT": [1, "AT"],
+				//"stMAT": [1, "MAT"], "stDF": [1, "DF"],
+				//"stMDF": [1, "MDF"], "stEVA": [1, "EVA"],
+				//"stMEVA": [1, "MEVA"], "stHIT": [1, "HIT"],
+				//"stMHIT": [1, "MHIT"], "stSPD": [1, "SPD"],
+				//"stCRI": [1, "CRI"], "stHEAL": [1, "HEAL"],
+				"H毒": [1, "猛毒"], "H衰": [1, "衰弱"],
+				"H痺": [1, "麻痺"], "H肉": [1, "肉体変調"],
+				"H魅": [1, "魅了"], "H呪": [1, "呪縛"],
+				"H乱": [1, "混乱"], "H精": [1, "精神変調"],
+				"H祝": [1, "祝福"], "H護": [1, "加護"],
+				"%AT": [1, "AT+％"], "%MAT": [1, "MAT+％"],
+				"%DF": [1, "DF+％"], "%MDF": [1, "MDF+％"],
+				"%EVA": [1, "EVA+％"], "%MEVA": [1, "MEVA+％"],
+				"%HIT": [1, "HIT+％"], "%MHIT": [1, "MHIT+％"],
+				"%SPD": [1, "SPD+％"], "%CRI": [1, "CRI+％"],
+				"%HEAL": [1, "HEAL+％"], "Retu": [1, "隊列"],
+				//"Syat": [1, "射程"],
+				"id": [0, "スキル名"],
+				"lv": [0, "スキルlv"], "type": [0, "スキルのタイプ(A,P,L)"],
+				"nA": [0, "行動数"], "spec": [0, "スキル説明"],
+				"key": [0, "key"], "subkey": [0, "subkey"],
+				"prop": [0, "prop"], "other": [0, "other"],
+				"cri": [0, "Critical数"], "add": [0, "効果量"]
+			};
+			const td = {}, syntaxText = {};
+			Object.keys(t).forEach(v => {t[v] = doc.createElement(t[v]);});
+			Object.keys(tr).forEach(v => {
+				const tx = tr[v][1];
+				td[v] = (tr[v][0]) ? {"t": 0, "u": 0, "text": 0} : {"s": 0, "text": 0};
+				tr[v] = miu$._HTMLfunc.createANDappendChild('tr', t.tbody, trx => {
+					Object.keys(td[v]).forEach(k => {
+						td[v][k] = miu$._HTMLfunc.createANDappendChild('td', trx, tdx => {
+							tdx.classList.add("v_tL_csv_manual_table_" + k);
+							if(k === "s") tdx.colSpan = 2;
+							tdx.textContent = k + v;
+							if(k !== "text") {
+								func_light(tdx);
+								syntaxText[tdx.textContent] = true;
+								tdx.addEventListener('click', function() {
+									const tx = this.textContent;
+									els.syntax.value += (els.syntax.value) ? "," + tx : tx;
+								}, false);
+							} else {
+								tdx.textContent = tx + " を表示します。";
+							}
+						});
+					});
 				});
-				t.tbody.appendChild(tr[v]);
 			});
 			t.table.appendChild(t.tbody);
 			els.manual.innerHTML = "<div>syntax<br>[ t~ : target ] , [ u~ : user ] , [ s~ : skill ]</div>";
 			els.manual.appendChild(t.table);
-			r_func["csv"] = reg => {
-				var keys = {}, func = {};
+			r_func.csv = reg => {
+				const keys = {};
 				Object.keys(select).forEach(v => {
 					keys[v] = [];
 					Array.from(select[v].logGetSelect.getElementsByTagName('input')).forEach((input, i) => {
@@ -2328,293 +1368,139 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 						}
 					});
 				});
-				els.rText.value = ((syn, obj, bool, res) => {
-					func.syntaxadd = (v) => {res += v + "\n";};
+				els.rText.value = (syn => {
+					let csv = "";
+					const obj = {}, func = {};
+					func.addSyntax = (v) => {csv += v + "\n";};
 					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
-					func.logtext = (o) => {func.syntaxadd(Object.keys(o).map((k) => {return (o[k] === true) ? undefined : o[k];}).join(","));};
-					func.logd = (logdata, obj, searchid, spectxt, pt) => {
-						logdata.forEach((v) => {
-							if(checkObject(v, "Object")) {
-								if(v.id) {
-									searchid = func.logd_id(obj, v);
-								} else if(v.spec) {
-									spectxt = func.logd_spec(obj, v);
-								} else if(reg.skill.test(searchid) && reg.spec.test(spectxt)) func.logd_check(obj, v, pt);
+					func.checkSyntax = array => {
+						const len = array.length;
+						for(let i = 0; i < len; ++i) {
+							if(syntaxText[array[i]]) {
+								obj[array[i]] = true;
 							} else {
-								func.logd(v, JSON.parse(JSON.stringify(obj)), searchid, spectxt, pt);
+								func.addSyntax("syntax error : [ " + array[i] + " ]");
+								return false;
+							}
+						}
+						return true;
+					};
+					func.logdata = (logdata, obj, search_id, search_spec, pt) => {
+						logdata.forEach(v => {
+							if(checkObject(v, "Object")) {
+								if(v.type) {
+									search_id = func.log_type(obj, v);
+									search_spec = "";
+								} else if(v.spec) {
+									search_spec = func.log_spec(obj, v);
+								} else if(reg.skill.test(search_id) && reg.spec.test(search_spec)) {
+									func.checkLog(obj, v, pt);
+								}
+							} else {
+								func.logdata(v, JSON.parse(JSON.stringify(obj)), search_id, search_spec, pt);
 							}
 						});
 					};
-					func.logd_id = (obj, v) => {
-						func.addString(obj, "sid,slv,stype,snA", v.id, v.slv, v.type, v.nA);
+					func.log_type = (obj, v) => {//APLHNES
+						func.addString(obj, "stype,sid,slv,snA", v.type, v.id, v.slv, v.nA);
 						return v.id;
 					};
-					func.logd_spec = (obj, v) => {
+					func.log_spec = (obj, v) => {
 						func.addString(obj, "sspec", v.spec);
 						return v.spec;
 					};
-					func.logd_check = (obj, v, pt) => {
-						var bool = 1, arr = {};
-						Object.keys(keys).forEach(k => {
-							bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
-							arr[k] = flag[flag.checkkey(k)][flag.getIndex(v[k])][0];
-						});
-						if(bool) {
-							["target", "user"].forEach((t) => {
-								if(arr[t]) {
-									arr[t.substring(0, 1) + "Eno"] = arr[t].split(/\s:\s/)[0];
-									arr[t] = arr[t].split(/\s:\s/)[1];
+					func.checkLog = (obj, v, pt) => {
+						const li = {};
+						if((() => {
+							let bool = 1;
+							Object.keys(keys).forEach(k => {
+								bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
+								li[k] = flag[flag.checkkey(k)][flag.getIndex(v[k])][0];
+							});
+							return bool;
+						})()) {
+							["target", "user"].forEach(t => {
+								if(li[t]) {
+									li[t.substring(0, 1) + "Eno"] = parseInt(li[t].split(/\s:\s/)[0], 10);
+									li[t] = li[t].split(/\s:\s/)[1];
 								}
 							});
-							func.logd_info(JSON.parse(JSON.stringify(obj)), arr, v, pt);
+							func.addString(obj, "tEno,uEno,tchar,uchar,skey,ssubkey,sprop,sother,sadd", li.tEno, li.uEno, li.target, li.user, li.key, li.subkey, li.prop, li.other, v.add);
+							if(v.info) {
+								func.addString(obj, "scri", v.info.cri);
+								["target", "user"].forEach(t => {
+									const a = v.info[t + "Status"], n = t.substring(0, 1);
+									func.addString(obj, `${n}pt,${n}yDam,${n}hDam,${n}Imp,${n}Retu`, pt[a.PTid], a.yDam, a.hDam, a.Impact, a["隊列"]);
+									(v => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
+									(v => {func.addString(obj, `${n}stHP,${n}stMHP,${n}stnMHP,${n}stSP,${n}stMSP`, v.HP, v.MHP, v.nMHP, v.SP, v.MSP);})(a.state);
+									(v => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護,${n}H肉,${n}H精`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"], v["毒"]+v["衰"]+v["痺"], v["魅"]+v["呪"]+v["乱"]);})(a["変調深度"]);
+								});
+							}
+							func.addSyntax(Object.keys(obj).map(k => {return (obj[k] === true) ? undefined : obj[k];}).join(","));
 						}
 					};
-					func.logd_info = (obj, arr, v, pt) => {
-						func.addString(obj, "tEno,uEno,tchar,uchar,skey,ssubkey,sprop,sother,sadd", arr.tEno, arr.uEno, arr.target, arr.user, arr.key, arr.subkey, arr.prop, arr.other, v.add);
-						if(v.info) {
-							func.addString(obj, "scri", v.info.critical);
-							["target", "user"].forEach((t) => {
-								var a = v.info[t + "Status"], n = t.substring(0, 1);
-								func.addString(obj, `${n}pt,${n}yDam,${n}hDam,${n}yHeal,${n}hHeal,${n}Rnzk,${n}Imp,${n}Retu,${n}Syat`, pt[a.PTid], a.yDam, a.hDam, a.yHeal, a.hHeal, a["連続"], a.Impact, a["隊列"], a["射程"]);
-								((v) => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
-								((v) => {func.addString(obj, `${n}stAT,${n}stMAT,${n}stDF,${n}stMDF,${n}stEVA,${n}stMEVA,${n}stHIT,${n}stMHIT,${n}stSPD,${n}stCRI,${n}stHEAL,${n}stHP,${n}stMHP,${n}stnMHP,${n}stSP,${n}stMSP`, v.AT, v.MAT, v.DF, v.MDF, v.EVA, v.MEVA, v.HIT, v.MHIT, v.SPD, v.CRI, v.HEAL, v.HP, v.MHP, v.nMHP, v.SP, v.MSP);})(a.state);
-								((v) => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"]);})(a["変調深度"]);
-							});
-						}
-						func.logtext(obj);
-					};
-					syn.split(/,/).forEach((v,i,a) => {
-						if(syntaxText[v]) {
-							obj[v] = true;
-						} else {
-							bool = 0;
-							func.syntaxadd("syntax error : [ " + v + " ]");
-						}
-					});
-					syn = JSON.parse(JSON.stringify(obj));
-					if(bool) {
-						func.syntaxadd(Object.keys(obj).join(","));
-						data.log.forEach((v,i) => {
-							obj = JSON.parse(JSON.stringify(syn));
+					if(func.checkSyntax(syn.split(/,/))) {
+						syn = JSON.parse(JSON.stringify(obj));
+						func.addSyntax(Object.keys(syn).join(","));
+						data.logdata.forEach((v,i) => {
 							func.addString(obj, "sturn", i);
-							func.logd(v.log, JSON.parse(JSON.stringify(obj)), "", "", v.pt);
+							v.log.forEach(l => {
+								func.logdata(l, JSON.parse(JSON.stringify(obj)), "", "", v.pt);
+							});
 						});
 					}
-					return res;
-				})(els.syntax.value, {}, 1, "");
+					return csv;
+				})(els.syntax.value);
 			};
 			return {"tables": t, "tr": tr, "td": td};
 		})();
-		els.rCopy.addEventListener('click', function() {
+		cpy.rCopy.addEventListener('click', function() {
 			els.rText.select();
-			document.execCommand('copy');
+			doc.execCommand('copy');
 		}, false);
 		e.result_area.appendChild(rElem.csv);
 	})();
-	(() => {
-	//passiveCounter
-		var els = {"passive_list": "select", "rText": "textarea", "rCopy": "input", "manual": "div"},
-			option = {"HP": 0/*, "命中": 1, "回避": 2*/},
-			func_passive = {};
-		Object.keys(els).forEach((v) => {
-			var d = document.createElement(els[v]);
-			d.classList.add("v_" + v);
-			els[v] = d;
-			rElem.passiveCounter.appendChild(d);
-		});
-		Object.keys(option).forEach((v) => {
-			var op = document.createElement('option');
-			op.textContent = v;
-			op.value = option[v];
-			els.passive_list.appendChild(op);
-			option[v] = op;
-		});
-		els.passive_list.classList.add("v_select_list");
-		els.rCopy.type = "button";
-		els.rCopy.value = "copy";
-		els.rText.readOnly = true;
-		els.rText.placeholder = " csv";
-		els.rText.spellcheck = false;
-		els.rText.value = "";
-		els.t = (() => {
-			func_passive["HP"] = reg => {
-				var skill = {},
-					i, keys = {};
-				["user", "target"].forEach(v => {
-					keys[v] = [];
-					Array.from(select[v].logGetSelect.getElementsByTagName('input')).forEach((input, i) => {
-						if(input.checked) {
-							i = flag.keysIndex(flag.checkkey(v), input.nextSibling.textContent, 1);
-							flag.resetFlag(keys[v], i);
-							flag.createFlag(keys[v], i);
-						}
-					});
-				});
-				keys["prop"] = [];
-				i = flag.keysIndex(flag.checkkey("prop"), "回復", 1);
-				flag.resetFlag(keys["prop"], i);
-				flag.createFlag(keys["prop"], i);
-				keys["key"] = [];
-				i = flag.keysIndex(flag.checkkey("key"), "HP", 1);
-				flag.resetFlag(keys["key"], i);
-				flag.createFlag(keys["key"], i);
-				func_passive.logd_check = v => {
-					var bool = 1;
-					Object.keys(keys).forEach(k => {
-						bool &= (keys[k][v[k][0]] & flag.getFlag(v[k][1])) ? 1 : 0;
-					});
-					return bool;
-				};
-				func_passive.loop = (logdata, pt) => {
-					var Aobj = false, healLog, func_a, skillIndex, spec;
-					func_a = (o,i) => {
-						if(Aobj) {
-							healLog = undefined;
-							if(func_passive.logd_check(o)) {
-								healLog = JSON.parse(JSON.stringify(o));
-								if(!skill[logdata[0].user]) skill[logdata[0].user] = {};
-								if(!skill[logdata[0].user][logdata[0].id]) skill[logdata[0].user][logdata[0].id] = [];
-								skill[logdata[0].user][logdata[0].id].push({"skill": JSON.parse(JSON.stringify(logdata[0])), "spec": spec, "pt": pt[healLog.info.targetStatus.PTid], "heal": JSON.parse(JSON.stringify(healLog)), "passive": []});
-							}
-						}
-					};
-					logdata.forEach((v,i) => {
-						if(checkObject(v, "Array") && v.length) {
-							if(checkObject(v[0], "Array")) {
-								func_passive.loop(v, pt);
-							} else if(v[0].type) {
-								if(/[P]/.test(v[0].type)) {
-									if(healLog) {
-										skillIndex = skill[logdata[0].user][logdata[0].id].length - 1;
-										skill[logdata[0].user][logdata[0].id][skillIndex].passive.push(JSON.parse(JSON.stringify(v[0])));
-									}
-								} else if(/[A]/.test(v[0].type)) {
-									func_passive.loop(v, pt);
-								}
-							} else {
-								(() => {
-									v.forEach((v,i) => {
-										func_a(v,i);
-										if(healLog) return;
-									});
-								})();
-							}
-						} else {
-							if(i === 0 && v.type) {
-								if(/[A]/.test(v.type)) Aobj = true;
-							} else if(v.spec) {
-								spec = v.spec;
-							} else {
-								func_a(v,i);
-							}
-						}
-					});
-				};
-				data.log.forEach(v => {func_passive.loop(v.log, v.pt);});
-				console.log(skill);
-				els.rText.value = ((syn, obj, bool, res) => {
-					var func = {}, countID = "thpC", Counter = {};
-					["thpC", "tptC"].forEach(a => {Counter[a] = {"logID": [], "Pcount": []};});
-					syn = "Auser,Aid,Aspec,target,tpt,tHP,tMHP,logID,Pid,Puser,Pcount";
-					func.syntaxadd = v => {res += v + "\n";};
-					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
-					func.logtext = o => {func.syntaxadd(Object.keys(o).map((k) => {return (o[k] === true) ? undefined : o[k];}).join(","));};
-					func.passivetext = (o, v) => {
-						var h = v.heal.info.targetStatus,
-							num = {"thpC": Math.ceil(h.state.HP / h.state.MHP * 10), "tptC": v.pt},
-							tname = flag[flag.checkkey("target")][flag.getIndex(v.heal.target)][0].split(/\s:\s/)[1];
-						Object.keys(num).forEach((id) => {Counter[id].logID[num[id]] = (Counter[id].logID[num[id]]) ? Counter[id].logID[num[id]] + 1 : 1;});
-						func.addString(o, "Auser,Aid,Aspec,target", v.skill.user, v.skill.id, v.spec, tname);
-						func.addString(o, "tpt,tHP,tMHP,logID", v.pt, h.state.HP, h.state.MHP, Counter[countID].logID[num[countID]]);
-						if(v.passive.length) {
-							v.passive.forEach(p => {
-								(o => {
-									if(reg.skill.test(p.id)) {
-										Object.keys(num).forEach((id) => {Counter[id].Pcount[num[id]] = (Counter[id].Pcount[num[id]]) ? Counter[id].Pcount[num[id]] + 1 : 1;});
-										func.addString(o, "Pid,Puser,Pcount", p.id, p.user, Counter[countID].Pcount[num[countID]]);
-									}
-									func.logtext(o);
-								})(JSON.parse(JSON.stringify(o)));
-							});
-						} else {
-							func.logtext(o);
-						}
-					};
-					syn.split(/,/).forEach(v => {obj[v] = true;});
-					syn = JSON.parse(JSON.stringify(obj));
-					func.syntaxadd(Object.keys(obj).join(","));
-					data.acterTable.forEach((v) => {
-						v.forEach(name => {
-							var s = skill[name];
-							if(s) {
-								Object.keys(s).forEach((skillname) => {
-									s[skillname].forEach(v => {
-										if(reg.spec.test(v.spec)) func.passivetext(JSON.parse(JSON.stringify(syn)), v);
-									});
-								});
-							}
-						});
-					});
-					console.log(Counter[countID].logID, Counter[countID].Pcount);
-					Object.keys(Counter[countID].logID).forEach((v,i) => {console.log(v,i);if(v) func.syntaxadd(`${countID}${v} : ( Pcount / logID ) : ${Counter[countID].Pcount[v]} / ${Counter[countID].logID[v]} = ${Counter[countID].Pcount[v]/Counter[countID].logID[v]}`);});
-					return res;
-				})("", {}, 1, "");
-			};
-			func_passive["命中"] = reg => {};
-			func_passive["回避"] = reg => {};
-			r_func["passiveCounter"] = reg => {
-				var passive_select = Object.keys(option)[els.passive_list.selectedIndex];
-				func_passive[passive_select](reg);
-			};
-			return;
-		})();
-		els.rCopy.addEventListener('click', function() {
-			els.rText.select();
-			document.execCommand('copy');
-		}, false);
-		e.result_area.appendChild(rElem.passiveCounter);
-	})();
-	(() => {
-	//timeTable
-	})();
-	func.selectchange = function() {
-		var key = Object.keys(option);
+	const func_select_change = function() {
+		const key = Object.keys(option);
 		e.result_area.textContent = "";
 		e.result_area.appendChild(rElem[key[parseInt(result.select_list.value)]]);
 	};
-	func.selectchange();
-	result.select_list.addEventListener('change', func.selectchange, false);
+	func_select_change();
+	result.select_list.addEventListener('change', func_select_change, false);
 	result.select_button.addEventListener('click', function() {
-		var key = Object.keys(option),
-			val1 = e.search_box.value.trim().split(/\s+/),
-			val2 = e.search_box_spec.value.trim().split(/\s+/),
-			reg = "", regexp = {};
-		val1.forEach((v) => {reg += v + "|";});
-		regexp.skill = new RegExp(reg.substr(0, reg.length - 1));
-		regexp.spec = new RegExp((val2[0]) ? "^" + val2[0] + "$" : val2[0]);
-		console.log(regexp);
+		const key = Object.keys(option);
+		const regexp = {"skill": e.search_box, "spec": e.search_box_spec};
+		Object.keys(regexp).forEach(v => {
+			const r = (array => {
+				let reg = "";
+				array.forEach(v => {reg += v + "|";});
+				return reg;
+			})(regexp[v].value.trim().split(/\s+/));
+			regexp[v] = new RegExp(r.substr(0, r.length - 1));
+		});
 		r_func[key[parseInt(result.select_list.value)]](regexp);
 	}, false);
 	e.preset_select.addEventListener('change', function(ev) {
-		var o = miu$._JSON.GET.V_log_preset[ev.target[ev.target.value].textContent];
-		rElem.csv.getElementsByClassName('v_syntax')[0].value = o.syntax;
-		e.search_box.value = o.search;
-		["key", "subkey", "prop", "other"].forEach((k) => {
-			Array.from(select[k].hide.getElementsByTagName('input')).forEach((input,i) => {
-				var j = flag.setIndex(i);
+		const o = miu$._JSON.GET.V_log_preset[ev.target[ev.target.value].textContent];
+		rElem.csv.getElementsByClassName('v_tL_csv_syntax')[0].value = o.syntax;
+		e.search_box.value = o.search_skill;
+		e.search_box_spec.value = o.search_spec;
+		["key", "subkey", "prop", "other"].forEach(k => {
+			Array.from(select[k].hide.getElementsByTagName('input')).forEach((input, i) => {
+				const j = flag.setIndex(i);
 				input.checked = (o[k][j[0]].indexOf(j[1]) + 1) ? true : false;
 			});
 		});
 	}, false);
-	e.preset_button.addEventListener('click', function(ev) {
-		var key = e.preset_text.value.trim().split(/\s+/);
-		key = key.join("");
+	e.preset_button.addEventListener('click', function() {
+		const key = e.preset_text.value.trim().split(/\s+/).join("");
 		if(key) {
 			miu$._JSON.GET.V_log_preset[key] = (() => {
-				var result = {};
-				result.syntax = rElem.csv.getElementsByClassName('v_syntax')[0].value;
-				result.search = e.search_box.value;
-				["key", "subkey", "prop", "other"].forEach((k) => {
+				const result = {};
+				result.syntax = rElem.csv.getElementsByClassName('v_tL_csv_syntax')[0].value;
+				result.search_skill = e.search_box.value;
+				result.search_spec = e.search_box_spec.value;
+				["key", "subkey", "prop", "other"].forEach(k => {
 					result[k] = [];
 					Array.from(select[k].logGetSelect.getElementsByTagName('input')).forEach((input, i) => {
 						if(input.checked) {
@@ -2626,53 +1512,46 @@ miu$._HTMLfunc.view.view_takeLog = function(data, key, onlist, viewElem) {
 				});
 				return result;
 			})();
+			miu$._HTMLfunc._presetLoad(e.preset_select, miu$._JSON.GET.V_log_preset);
 			miu$._JSON.save();
-			miu$._HTMLfunc.view.view_takeLog_preset(e.preset_select, miu$._JSON.GET.V_log_preset);
 		}
 	}, false);
-	e.preset_delete.addEventListener('click', function(ev) {
+	e.preset_delete.addEventListener('click', function() {
 		try {
-			var val = e.preset_select[e.preset_select.selectedIndex].textContent;
-			if(miu$._JSON.GET.V_log_preset[val]) {
-				delete miu$._JSON.GET.V_log_preset[val];
-				miu$._HTMLfunc.view.view_takeLog_preset(e.preset_select, miu$._JSON.GET.V_log_preset);
+			const v = e.preset_select[e.preset_select.selectedIndex].textContent;
+			if(miu$._JSON.GET.V_log_preset[v]) {
+				delete miu$._JSON.GET.V_log_preset[v];
+				miu$._HTMLfunc._presetLoad(e.preset_select, miu$._JSON.GET.V_log_preset);
 				miu$._JSON.save();
 			}
 		} catch(e) {
-			alert(e);
+			alert(e + "\n >>selectが空です。");
 		}
 	}, false);
 };
 
-miu$._HTMLfunc.view.view_takeLog_preset = function(select, e) {
+miu$._HTMLfunc._presetLoad = function(select, preset) {
 	select.textContent = "";
-	Object.keys(e).forEach((v,i) => {
-		var op = document.createElement('option');
-		op.textContent = v;
-		op.value = i;
-		select.appendChild(op);
+	Object.keys(preset).forEach((v,i) => {
+		miu$._HTMLfunc.createANDappendChild('option', select, op => {
+			op.textContent = v;
+			op.value = i;
+		});
 	});
 };
 
-//////view_skillLog///////////////////////////////////////////
-miu$._HTMLfunc.view.view_skillLog = function(data, key, onlist, viewElem) {
-	console.log(key);
-};
-
-//////view_skillLog///////////////////////////////////////////
-miu$._HTMLfunc.view.view_setting = function(data, key, onlist, viewElem) {
-	console.log(key);
-	var e = {"setting_area": "div", "setting_url": "label"},
-		json = {"text": "span", "file": "input", "save": "input"},
-		func = {};
-	Object.keys(e).forEach((v) => {
-		e[v] = document.createElement(e[v]);
-		e[v].classList.add("v_" + v);
+//////view_setting////////////////////////////////////////////
+miu$._HTMLfunc.v_view_setting = function(data, key, onlist, viewElem) {
+	const e = {"setting_area": "div", "setting_url": "label"};
+	const json = {"text": "span", "file": "input", "save": "input"};
+	Object.keys(e).forEach(v => {
+		e[v] = doc.createElement(e[v]);
+		e[v].classList.add("v_st_" + v);
 	});
-	Object.keys(json).forEach((v) => {
-		json[v] = document.createElement(json[v]);
-		json[v].classList.add("v_setting_url_" + v);
-		e.setting_url.appendChild(json[v]);
+	Object.keys(json).forEach(v => {
+		json[v] = miu$._HTMLfunc.createANDappendChild(json[v], e.setting_url, j => {
+			j.classList.add("v_st_url_" + v);
+		});
 	});
 	json.text.textContent = "jsonURL :";
 	json.file.type = "file";
@@ -2681,18 +1560,18 @@ miu$._HTMLfunc.view.view_setting = function(data, key, onlist, viewElem) {
 	json.save.value = "save";
 	viewElem.appendChild(e.setting_area);
 	e.setting_area.appendChild(e.setting_url);
-	func.fileselect = function(ev) {
-		var file = ev.target.files;
+	json.file.addEventListener('change', function(ev) {
+		const file = ev.target.files;
 		ev.stopPropagation();
 		ev.preventDefault();
 		try {
-			Array.from(file).forEach((f) => {
-				var reader = new FileReader();
+			Array.from(file).forEach(f => {
+				const reader = new FileReader();
 				if(/json/.test(f.type)) {
 					reader.onload = function(e) {
-						var el = document.getElementById('view_takeLog').getElementsByClassName('v_preset_select')[0];
+						const el = doc.getElementById('view_takeLog').getElementsByClassName('v_tL_preset_select')[0];
 						miu$._JSON.GET = JSON.parse(e.target.result);
-						miu$._HTMLfunc.view.view_takeLog_preset(el, miu$._JSON.GET.V_log_preset);
+						miu$._HTMLfunc._presetLoad(el, miu$._JSON.GET.V_log_preset);
 						miu$._JSON.save();
 					};
 					reader.readAsText(f);
@@ -2703,15 +1582,14 @@ miu$._HTMLfunc.view.view_setting = function(data, key, onlist, viewElem) {
 		} catch(e) {
 			alert(e);
 		}
-	};
-	json.file.addEventListener('change', func.fileselect, false);
-	json.save.addEventListener('click', function(ev) {
-		var blob = new Blob([JSON.stringify(miu$._JSON.GET, null, "\t")], {"type": "application/json"}),
-			a = document.createElement('a'),
-			url = URL.createObjectURL(blob);
+	}, false);
+	json.save.addEventListener('click', function() {
+		const blob = new Blob([JSON.stringify(miu$._JSON.GET, null)], {"type": "application/json"});
+		const a = doc.createElement('a');
+		const url = URL.createObjectURL(blob);
 		a.href = url;
 		a.target = "_blank";
-		a.download = "specterX_ktst_setting.json";
+		a.download = ScriptName + "_setting.json";
 		a.click();
 		URL.revokeObjectURL(url);
 	}, false);
@@ -2719,637 +1597,142 @@ miu$._HTMLfunc.view.view_setting = function(data, key, onlist, viewElem) {
 
 //////stylesheet//////////////////////////////////////////////
 miu$._HTMLfunc.stylesheet = function() {
-	var head = document.getElementsByTagName('head')[0],
-		s = document.createElement('style'),
-		css = function(a) {
-			var text = ((r,i,l) => {
-				for(; i < l; ++i) arguments[i].forEach((v) => {r += v + "\n";});
-				return r;
-			})("", 1, arguments.length);
-			return a + " {\n" + text + "}\n";
-		},
-		tx = function() {return Array.from(arguments).map((v) => {return v + ";";});},
+	const css = function(a) {
+		const text = (l => {
+			let r = "";
+			for(let i = 1; i < l; ++i) arguments[i].forEach(v => {r += v + "\n";});
+			return r;
+		})(arguments.length);
+		return a + "{\n" + text + "}\n";
+	};
+	const tx = function() {return Array.from(arguments).map(v => {return v + ";";});},
 		cl = ".", id = "#",
 		font = tx("font-size: 10px", "font-weight: normal", "font-style: normal", "color: rgb(220,220,220)"),
 		absolute = tx("width: 100%", "height: 100%", "position: absolute"),
-		disp = {"b": tx("display: block"), "n": tx("display: none"), "ib": tx("display: inline-block")},
-	///////////////////////
-		t = ""
-		+ css("html, body",
-			tx("width: 100%",
-			"height: 100%",
-			"margin: 0")
-		)
-		+ css(id + Scriptname,
-			font,
-			tx("max-width: 100%",
-			"max-height: 100%")
-		)
-		+ css(id + "open_Button",
-			tx("position: fixed",
-			"z-index: " + zIndex,
-			"bottom: 0",
-			"width: 100%",
-			"margin: 0",
-			"padding: 5px 0",
-			"background: rgba(0,0,0,0.7)",
-			"border-top: " + Borderline,
-			"text-align: center",
-			"cursor: pointer")
-		)
-		+ css(cl + "_openlight",
-			tx("color: rgb(255,255,255)",
-			"text-shadow: 0 0 1px rgba(255,255,255,0.5)")
-		)
-		+ css(cl + Scriptname + "_close",
-			tx("background: rgba(255,255,255,0.5)",
-			"width: 80px",
-			"float: right",
-			"cursor: pointer")
-		)
-		+ css(cl + "_closelight",
-			tx("color: rgb(255,255,255)",
-			"background: rgba(255,255,255,0.6) !important")
-		)
-	///////////////////////
-		+ css(id + "overlay_Window",
-			tx("position: fixed",
-			"flex-direction: column",
-			"z-index: " + (zIndex + 1),
-			"text-align: center",
-			"margin: 0",
-			"padding: 0",
-			"width: 100%",
-			"height: 100%",
-			"max-height: 100%",
-			"top: 0px"),
-			disp.n
-		)
-		+ css(id + "top_overlay",
-			tx("box-sizing: border-box",
-			"width: 100%",
-			"background: rgba(0,0,0,0.3)",
-			"padding: 10px 0 0 0")
-		)
-		+ css(id + "overlay_close",
-			tx("background: rgba(255,255,255,0.5)",
-			"width: 80px",
-			"float: right",
-			"padding: 0px 0",
-			"cursor: pointer")
-		)
-		+ css(id + "opacity",
-			tx("float: right",
-			"margin: 0 20px 0 0",
-			"text-arign: right")
-		)
-		+ css(id + "opacity input",
-			font,
-			tx("background: rgba(0,0,0,0.3)",
-			"width: 60px",
-			"height: 15px",
-			"padding: 0 0 0 5px",
-			"border: none")
-		)
-		+ css(id + "menu_tab",
-			tx("box-sizing: border-box",
-			"padding: 0 0 0 10px",
-			"width: 100%",
-			"text-align: left",
-			"border-bottom: solid 1px rgba(0,0,0,0.7)")
-		)
-		+ css(id + "main_area",
-			tx("box-sizing: border-box",
-			"position: relative",
-			"width: 100%",
-			"height: 100%")
-		)
-		////
-		+ css(cl + Scriptname + "_menu",
-			tx("background: rgba(255,255,255,0.5)",
-			"font-size: 12px",
-			"width: 150px",
-			"margin: 0 10px 0 0",
-			"padding: 5px 0",
-			"text-align: center",
-			"border-left: solid 1px rgba(255,255,255,0.3)",
-			"border-top: solid 1px rgba(255,255,255,0.3)",
-			"border-right: solid 1px rgba(255,255,255,0.3)",
-			"cursor: pointer"),
-			disp.ib
-		)
-		+ css(cl + "_menulight",
-			tx("background: rgba(255,255,255,0.7)",
-			"color: rgb(255,255,255)")
-		)
-		+ css(cl + "_menusublight",
-			tx("background: rgba(255,255,255,0.6)")
-		)
-		////
-		+ css(cl + Scriptname + "_view", disp.n)
-	///////////////////////
-	/*
-		+ css(id + "view_status", absolute)
-		+ css(id + "view_takeLog", absolute)
-		+ css(id + "view_skillLog", absolute)
-		+ css(id + "view_setting", absolute)
-		*/
-	///////////////////////
-		+ css(cl + "pt_area",
-			tx("float: left",
-			"width: 200px",
-			"margin: 10px 0 0 10px")
-		)
-		+ css(cl + "pt_area_sub",
-			tx("text-align: left",
-			"padding: 5px 0 5px 15px",
-			"margin: 0 0 10px 0",
-			"border-left: solid 10px rgba(0,0,0,0.3)")
-		)
-		+ css(cl + "pt_area_name",
-			tx("padding: 2px 5px",
-			"font-size: 11px",
-			"cursor: pointer")
-		)
-		+ css(cl + "_pt_light",
-			tx("color: rgb(255,255,255)",
-			"font-weight: bold")
-		)
-		+ css(cl + "_pt_sublight",
-			tx("color: rgb(255,255,255)",
-			"background: rgba(255,255,255,0.1)")
-		)
-		////
-		+ css(cl + "v_status_area",
-			tx("float: left",
-			"margin: 10px 0 0 10px",
-			"padding: 2px 15px",
-			"border-left: solid 10px rgba(0,0,0,0.3)")
-		)
-		+ css(cl + "v_status_td_00",
-			tx("text-align: left",
-			"font-weight: bold",
-			"padding: 0 0 0 5px",
-			"width: 160px")
-		)
-		+ css(cl + "v_status_td_01",
-			tx("text-align: right",
-			"width: 40px")
-		)
-		+ css(cl + "v_status_td_02",
-			tx("text-align: left",
-			"font-weight: bold",
-			"padding: 0 0 0 5px",
-			"width: 60px")
-		)
-		+ css(cl + "v_status_td_03",
-			tx("text-align: center",
-			"font-weight: bold",
-			"padding: 0 0 0 5px",
-			"width: 60px")
-		)
-		+ css(cl + "v_status_td_02 input",
-			font,
-			tx("background: rgba(0,0,0,0.3)",
-			"width: 60px",
-			"height: 15px",
-			"padding: 0 0 0 5px",
-			"border: none")
-		)
-		+ css(cl + "v_status_get",
-			font,
-			tx("color: rgb(0,0,0)",
-			"width: 60px",
-			"font-family: serif")
-		)
-	///////////////////////
-		+ css(cl + "v_select_area",
-			absolute,
-			tx("display: flex",
-			"flex-direction: column",
-			"text-align: center",
-			"margin: 0",
-			"padding: 0",
-			"max-height: 100%",
-			"top: 0px")
-		)
-		+ css(cl + "v_logtop",
-			tx("box-sizing: border-box",
-			"width: 100%",
-			"padding: 15px 0 15px 20px",
-			"font-size: 12px",
-			"text-align: left")
-		)
-		+ css(cl + "v_preset_select",
-			font,
-			tx("color: rgb(0,0,0)",
-			"width: 100px",
-			"font-family: serif")
-		)
-		+ css(cl + "v_preset_text",
-			font,
-			tx("box-sizing: border-box",
-			"font-size: 12px",
-			"margin-left: 10px",
-			"padding: 3px",
-			"background: rgba(0,0,0,0.5)",
-			"width: 100px")
-		)
-		+ css(cl + "v_preset_button",
-			font,
-			tx("color: rgb(0,0,0)",
-			"width: 60px",
-			"font-family: serif")
-		)
-		+ css(cl + "v_preset_delete",
-			font,
-			tx("color: rgb(0,0,0)",
-			"width: 60px",
-			"font-family: serif")
-		)
-		+ css(cl + "v_hide",
-			tx("margin: 0 0 10px 5px"),
-			disp.n
-		)
-		+ css(cl + "v_select_main",
-			tx("position: relative",
-			"height: 100%",
-			"width: 100%")
-		)
-		+ css(cl + "v_select_area2",
-			absolute,
-			tx("display: flex",
-			"flex-direction: row",
-			"margin: 0",
-			"padding: 0",
-			"max-height: 100%",
-			"top: 0px",
-			"text-align: left")
-		)
-		+ css(cl + "v_checkSelect",
-			tx("width: 220px",
-			"padding: 0 0 0 30px",
-			"height: 100%",
-			"overflow-y: auto")
-		)
-		+ css(cl + "v_search_box, " + cl + "v_search_box_spec",
-			font,
-			tx("box-sizing: border-box",
-			"text-align: left",
-			"font-size: 12px",
-			"margin-bottom: 10px",
-			"padding: 3px",
-			"background: rgba(0,0,0,0.5)",
-			"width: 100%")
-		)
-		+ css(cl + "v_logGetTitle",
-			tx("padding: 2px 10px",
-			"font-size: 11px",
-			"cursor: pointer")
-		)
-		+ css(cl + "v_logGetTitle " + cl + "name",
-			tx("margin-left: 5px")
-		)
-		+ css(cl + "_display_open", disp.b)
-		+ css(cl + "v_logGet_pc",
-			tx("width: 100%",
-			"cursor: pointer"),
-			disp.ib
-		)
-		+ css(cl + "v_logGet_st",
-			tx("width: 50%",
-			"cursor: pointer"),
-			disp.ib
-		)
-		+ css(cl + "v_logGet_pc input", tx("vertical-align: sub"))
-		+ css(cl + "v_logGet_st input", tx("vertical-align: sub"))
-		+ css(cl + "_input_allchecked",
-			tx("width: 50%",
-			"margin: 5px 0",
-			"text-align: center",
-			"cursor: pointer"),
-			disp.ib
-		)
-		+ css(cl + "v_select_right",
-			tx("display: flex",
-			"flex-direction: column",
-			"box-sizing: border-box",
-			"padding: 0 0 0 10px",
-			"position: relative",
-			"height: 100%",
-			"width: 100%")
-		)
-		+ css(cl + "v_select_button",
-			font,
-			tx("color: rgb(0,0,0)",
-			"width: 60px",
-			"margin-left: 10px",
-			"font-family: serif")
-		)
-		+ css(cl + "v_select_list",
-			font,
-			tx("color: rgb(0,0,0)",
-			"font-family: serif")
-		)
-		+ css(cl + "v_result_area",
-			tx("box-sizing: border-box",
-			"padding-top: 10px",
-			"height: 100%",
-			"width: 100%",
-			"overflow: auto")
-		)
-		+ css(cl + "v_result_hide",
-			tx("box-sizing: border-box",
-			"display: flex",
-			"flex-direction: column",
-			"height: 100%",
-			"width: 100%")
-		)
-		+ css(cl + "v_syntax",
-			font,
-			tx("box-sizing: border-box",
-			"font-size: 12px",
-			"margin-bottom: 10px",
-			"padding: 3px",
-			"background: rgba(0,0,0,0.5)",
-			"width: 50%"),
-			disp.b
-		)
-		+ css(cl + "v_rCopy",
-			font,
-			tx("color: rgb(0,0,0)",
-			"padding-bottom: 5px",
-			"width: 60px",
-			"font-family: serif"),
-			disp.b
-		)
-		+ css(cl + "v_rText",
-			font,
-			tx("box-sizing: border-box",
-			"resize: none",
-			"padding: 3px",
-			"height: 30%",
-			"width: 50%",
-			"background: rgba(0,0,0,0.5)",
-			"overflow: scroll"),
-			disp.b
-		)
-		+ css(cl + "v_manual",
-			tx("box-sizing: border-box",
-			"height: 100%",
-			"width: 50%",
-			"overflow: scroll"),
-			disp.b
-		)
-		+ css(cl + "v_manual div",
-			tx("padding: 10px 10px 0 10px")
-		)
-		+ css(cl + "v_manual table",
-			font,
-			tx("margin: 10px",
-			"text-align: center",
-			"border: solid 1px rgba(0,0,0,0.3)")
-		)
-		+ css(cl + "v_manual tbody td",
-			tx("padding: 1px 5px",
-			"min-width: 50px",
-			"border: solid 1px rgba(0,0,0,0.3)")
-		)
-		+ css(cl + "v_manual_table_text",
-			tx("text-align: left")
-		)
-		
-		+ css(cl + "v_passive_list",
-			tx("width: 100px",
-			"height: 22px",
-			"box-sizing: content-box")
-		)
-		
-		
-	///////////////////////	
-		+ css(cl + "v_setting_area",
-			font,
-			tx("padding: 10px 0 0 20px",
-			"text-align: left")
-		)
-		+ css(cl + "v_setting_url_file",
-			font,
-			tx("box-sizing: border-box",
-			"padding: 3px",
-			"margin-left: 5px",
-			"background: rgba(0,0,0,0.5)",
-			"width: 300px",
-			"font-family: serif")
-		)
-		+ css(cl + "v_setting_url_open",
-			font,
-			tx("color: rgb(0,0,0)",
-			"width: 60px",
-			"margin-left: 10px",
-			"font-family: serif")
-		)
-		+ css(cl + "v_setting_url_save",
-			font,
-			tx("color: rgb(0,0,0)",
-			"width: 60px",
-			"font-family: serif")
-		)
-		
-		
-		
-	///////////////////////
-		+ css(cl + Scriptname + "_bold", tx("font-weight: bold !important"))
-		+ css(cl + Scriptname + "_italic", tx("font-style: italic !important"))
-		+ css(cl + Scriptname + "_red", tx("color: rgba(128,0,0,0.5)"))
-		+ css(cl + Scriptname + "_text", font, disp.ib)
-		+ css(cl + Scriptname + "_table", font, tx("margin: 0"))
-		+ css(cl + Scriptname + "_nomaltext", tx("color: rgb(220,220,220)"))
-	///////////////////////
-		+ css(cl + Scriptname + "_insertinfo",
-			font,
-			tx("margin-left: 10px",
-			"padding: 0 20px",
-			"color: rgba(0,0,0,0.5)",
-			"background: rgba(0,0,0,0.1)",
-			"border-radius: 5px",
-			"cursor: pointer")
-		)
-		+ css(cl + Scriptname + "_infoclick",
-			tx("background: rgba(0,0,0,0.1)",
-			"box-shadow: 0 1px 1px 0 rgba(0,0,0,0.7)")
-		)
-		+ css(cl + Scriptname + "_inserthpsp",
-			font,
-			tx("color: rgba(0,0,0,0.5)",
-			"padding-left: 5px")
-		)
-	///////////////////////
-		+ css(id + "information_Window",
-			tx("position: absolute",
-			"z-index: " + (zIndex - 5)),
-			disp.n
-		)
-		+ css(cl + "_info_drag",
-			tx("z-index: " + (zIndex - 4) + " !important")
-		)
-		+ css(id + Scriptname + "_information_window_box",
-			tx("position: relative",
-			"min-width: 320px",
-			"min-height: 50px",
-			"text-align: center",
-			"border: " + Borderline,
-			"border-radius: 5px",
-			"box-shadow: 0px 1px 1px 0 rgba(0,0,0,0.7)"),
-			disp.b
-		)
-		+ css(id + Scriptname + "_information_window_sub",
-			tx("margin-top: 10px",
-			"text-align: center",
-			"border: " + Borderline,
-			"border-radius: 5px",
-			"box-shadow: 0px 1px 1px 0 rgba(0,0,0,0.7)"),
-			disp.n
-		)
-		+ css(id + "information_window_top",
-			tx("background: rgba(0,0,0,0.3)",
-			"border-bottom: solid 1px rgba(0,0,0,0.7)")
-		)
-		+ css(cl + Scriptname + "_textinfo",
-			font,
-			tx("cursor: move")
-		)
-		+ css(id + "information_window_main",
-			tx("margin: 5px 0")
-		)
-		+ css(cl + "_info_box_skill",
-			tx("text-align: left",
-			"padding: 0 10px")
-		)
-		+ css(cl + "_info_box_skill_name",
-			tx("font-size: 15px")
-		)
-		+ css(cl + "_info_box_skill_text",
-			tx("margin-left: 10px")
-		)
-		+ css(cl + "_info_box_skill_table",
-			font,
-			tx("margin: 5px 0",
-			"text-align: center",
-			"border: solid 1px rgba(0,0,0,0.3)")
-		)
-		+ css(cl + "_info_box_skill_table thead td",
-			tx("background: rgba(0,0,0,0.3)",
-			"font-style: italic",
-			"color: rgba(220,220,220,0.5)")
-		)
-		+ css(cl + "_info_box_skill_table td",
-			tx("padding: 0 3px",
-			"min-width: 40px",
-			"border: solid 1px rgba(0,0,0,0.3)")
-		)
-		+ css(id + "information_window_info",
-			tx("margin: 10px",
-			"color: rgba(220,220,220,0.5)",
-			"text-align: left")
-		)
-		+ css(cl + Scriptname + "_info_openclose",
-			tx("cursor: pointer")
-		)
-		+ css(cl + Scriptname + "_info_openclose_click",
-			tx("background: rgba(255,255,255,0.3)",
-			"color: rgb(255,255,255)",
-			"text-shadow: 0 0 1px rgba(255,255,255,0.5)")
-		)
-		+ css(cl + "_info_sub",
-			tx("width: 50%")
-		)
-		+ css(cl + "_info_sub ul",
-			tx("margin: 0",
-			"padding: 0px 20px",
-			"font-style: italic",
-			"list-style-type: square")
-		)
-		+ css(cl + "_info_sub_nav",
-			tx("display: flex",
-			"flex-direction: row",
-			"margin: 10px 0",
-			"padding: 0",
-			"list-style-type: none")
-		)
-		
-	///////////////////////
+		zIndex = 156;
+	/////////
+	const t = ""
+		+ css("html, body", tx("width: 100%", "height: 100%", "margin: 0"))
+		+ css(id + ScriptName, font, tx("max-width: 100%", "max-height: 100%"))
+		+ css(id + "open_Button", tx("position: fixed", "z-index: "+zIndex, "bottom: 0", "width: 100%", "padding: 5px 0", "background: rgba(0,0,0,0.7)", "border-top: solid 1px rgb(0,0,0)", "text-align: center", "cursor: pointer"))
+		+ css(cl + "_openlight", tx("color: rgb(255,255,255) !important", "text-shadow: 0 0 1px rgba(255,255,255,0.4) !important"))
+	/////////
+		+ css(id + "overlay_Window", tx("position: fixed", "flex-direction: column", "z-index: "+(zIndex+1), "text-align: center", "margin: 0", "padding: 0", "width: 100%", "height: 100%", "max-width: 100%", "max-height: 100%", "top: 0px", "display: none"))
+		+ css(id + "top_overlay", tx("box-sizing: border-box", "width: 100%", "background: rgba(0,0,0,0.3)", "padding: 10px 0 0 0"))
+		+ css(id + "overlay_close", tx("background: rgba(255,255,255,0.5)", "width: 80px", "float: right", "padding: 0px 0", "cursor: pointer"))
+		+ css(id + "opacity", tx("float: right", "margin: 0 20px 0 0", "text-align: right"))
+		+ css(id + "opacity input", font, tx("background: rgba(0,0,0,0.3)", "width: 60px", "height: 15px", "padding: 0 0 0 5px", "border: none"))
+		+ css(id + "menu_tab", tx("box-sizing: border-box", "padding: 0 0 0 10px", "width: 100%", "text-align: left", "border-bottom: solid 1px rgba(0,0,0,0.7)"))
+		+ css(id + "main_area", tx("box-sizing: border-box", "position: relative", "width: 100%", "height: 100%"))
+		+ css(cl + ScriptName + "_menu", tx("box-sizing: border-box", "border-radius: 3px", "font-size: 12px", "width: 150px", "margin: 0 2px 0 0", "padding: 3px 0", "text-align: center", "cursor: pointer", "display: inline-block"))
+		+ css(cl + "_closelight", tx("color: rgb(255,255,255)", "background: rgba(255,255,255,0.6) !important"))
+		+ css(cl + "_menulight", tx("background: rgba(128,160,255,0.4)", "color: rgb(220,235,255)"))
+		+ css(cl + "_menusublight", tx("background: rgba(128,160,255,0.2)"))
+		+ css(cl + ScriptName + "_view", tx("display: none"))
+	/////////
+		+ css(cl + "_disp_f", tx("display: flex !important"))
+		+ css(cl + "_disp_b", tx("display: block !important"))
+	/////////
+		+ css(cl + "v_tL_select_area", absolute, tx("display: flex", "flex-direction: column", "text-align: center", "margin: 0", "padding: 0", "max-height: 100%", "top: 0px"))
+		+ css(cl + "v_tL_logtop", tx("box-sizing: border-box", "width: 100%", "padding: 15px 0 15px 20px", "text-align: left"))
+		+ css(cl + "v_tL_preset_select", font, tx("color: rgb(0,0,0)", "width: 100px", "font-family: serif"))
+		+ css(cl + "v_tL_preset_text", font, tx("box-sizing: border-box", "font-size: 12px", "margin: 0 1px 0 10px", "padding: 2px", "background: rgba(0,0,0,0.3)", "border: inset 2px rgba(255,255,255,1)", "width: 100px"))
+		+ css(cl + "v_tL_preset_button, " + cl + "v_tL_preset_delete", tx("font-size: 10px", "font-weight: normal", "font-style: normal", "font-family: serif", "color: rgb(0,0,0)", "width: 60px"))
+		+ css(cl + "v_tL_select_main", tx("position: relative", "height: 100%", "width: 100%"))
+		+ css(cl + "v_tL_select_area2", absolute, tx("display: flex", "flex-direction: row", "margin: 0", "padding: 0", "max-height: 100%", "top: 0px", "text-align: left"))
+		+ css(cl + "v_tL_checkSelect", tx("width: 220px", "padding: 0 0 0 30px", "height: 100%", "overflow-y: auto"))
+		+ css(cl + "v_tL_search_box, " + cl + "v_tL_search_box_spec", font, tx("box-sizing: border-box", "font-size: 12px", "margin: 0 0 10px 0", "padding: 2px", "background: rgba(0,0,0,0.3)", "border: inset 2px rgba(255,255,255,1)", "width: 100%"))
+		+ css(cl + "_text_sublight", tx("color: rgb(255,255,255)", "background: rgba(255,255,255,0.1)"))
+		+ css(cl + "v_tL_hide", tx("margin: 0 0 10px 5px", "display: none"))
+		+ css(cl + "v_tL_logGetTitle", tx("padding: 2px 10px", "font-size: 11px", "cursor: pointer"))
+		+ css(cl + "v_tL_logGetTitle " + cl + "name", tx("margin: 0 0 0 5px"))
+		+ css(cl + "v_tL_logGet_pc", tx("width: 100%", "cursor: pointer", "display: inline-block"))
+		+ css(cl + "v_tL_logGet_st", tx("width: 50%", "cursor: pointer", "display: inline-block"))
+		+ css(cl + "v_tL_logGet_pc input", tx("vertical-align: sub"))
+		+ css(cl + "v_tL_logGet_st input", tx("vertical-align: sub"))
+		+ css(cl + "_input_allchecked", tx("width: 50%", "margin: 5px 0", "text-align: center", "cursor: pointer", "display: inline-block"))
+		+ css(cl + "v_tL_select_right", tx("display: flex", "flex-direction: column", "box-sizing: border-box", "padding: 0 0 0 10px", "position: relative", "height: 100%", "width: 100%"))
+		+ css(cl + "v_tL_select_button", tx("margin: 0 0 0 10px", "font-size: 10px", "font-weight: normal", "font-style: normal", "font-family: serif", "color: rgb(0,0,0)", "width: 60px"))
+		+ css(cl + "v_tL_select_list", font, tx("color: rgb(0,0,0)", "min-width: 100px", "font-family: serif"))
+		+ css(cl + "v_tL_select_getter", tx("width: 100%"))
+		+ css(cl + "v_tL_result_area", tx("padding: 10px 0 0 0", "height: 100%", "width: 100%", "overflow: auto"))
+		+ css(cl + "v_tL_result_hide", tx("display: flex", "flex-direction: column", "box-sizing: border-box", "position: relative", "height: 100%", "width: 100%"))
+		+ css(cl + "v_tL_csv_syntax", font, tx("box-sizing: border-box", "font-size: 12px", "margin: 0 0 10px 0", "padding: 2px", "background: rgba(0,0,0,0.3)", "width: 50%", "border: inset 2px rgba(255,255,255,1)"))
+		+ css(cl + "v_tL_csv_rText", font, tx("box-sizing: border-box", "margin: 0 0 0 0", "resize: none", "padding: 3px", "height: 30%", "width: 50%", "background: rgba(0,0,0,0.3)", "overflow: scroll"))
+		+ css(cl + "v_tL_csv_copy_area", tx("width: 100%", "padding: 0 0 10px 0"))
+		+ css(cl + "v_tL_csv_rCopy", tx("margin: 0 0 0 0", "font-size: 10px", "font-weight: normal", "font-style: normal", "font-family: serif", "color: rgb(0,0,0)", "width: 60px"))
+		+ css(cl + "v_tL_csv_manual", tx("box-sizing: border-box", "height: 100%", "width: 50%", "overflow: scroll"))
+		+ css(cl + "v_tL_csv_manual div", tx("padding: 10px 10px 0 10px"))
+		+ css(cl + "v_tL_csv_manual table", font, tx("margin: 10px", "text-align: center", "border: solid 1px rgba(0,0,0,0.3)"))
+		+ css(cl + "v_tL_csv_manual tbody td", tx("padding: 1px 5px", "min-width: 50px", "border: solid 1px rgba(0,0,0,0.3)"))
+		+ css(cl + "v_tL_csv_manual_table_text", tx("text-align: left"))
+	/////////
+		+ css(cl + "v_st_setting_area", tx("padding: 15px 0 0 20px", "text-align: left"))
+		+ css(cl + "v_st_url_file", font, tx("box-sizing: border-box", "padding: 2px", "margin: 0 0 0 5px", "background: rgba(0,0,0,0.3)", "font-family: serif", "cursor: pointer", "width: 300px"))
+		+ css(cl + "v_st_url_save", font, tx("margin: 0 0 0 10px", "color: rgb(0,0,0)", "font-family: serif", "width: 60px"))
+	/////////
 		;
-	///////////////////////
-	s.type = 'text/css';
-	s.textContent = t;
-	head.appendChild(s);
-	return s;
+	/////////
+	return miu$._HTMLfunc.createANDappendChild('style', doc.getElementsByTagName('head')[0], function(e) {
+		e.type = "text/css";
+		e.textContent = t;
+	});
 };
 
-
 //////////////////////////////////////////////////////////////
-// create
+// html
 //
-
 miu$._CREATEhtml = {};
 
 miu$._CREATEhtml.init = function() {
-	var stylesheet = miu$._HTMLfunc.stylesheet(),
-		top_element = miu$._HTMLfunc.init(),
-		open_Button = miu$._HTMLfunc.getlog(top_element),
-		information_Window = miu$._HTMLfunc.informationWindow(top_element);
+	const stylesheet = miu$._HTMLfunc.stylesheet(),
+		top_element = miu$._HTMLfunc.top_element(),
+		open_Button = miu$._HTMLfunc.open_Button(top_element),
+		func = () => {
+			miu$._CREATEhtml.setlog(top_element, open_Button);
+			open_Button.removeEventListener('click', func, false);
+		};
 	miu$._JSON.set();
-	if(Autoload) {
-		miu$._CREATEhtml.setlog(top_element, open_Button);
-	} else {
-		((f) => {
-			f = () => {
-				miu$._CREATEhtml.setlog(top_element, open_Button);
-				open_Button.removeEventListener('click', f, false);
-			};
-			open_Button.addEventListener('click', f, false);
-		})();
-	}
+	open_Button.addEventListener('click', func, false);
 };
 
 miu$._CREATEhtml.setlog = function(top_element, open_Button) {
-	var e = document.getElementsByClassName('AL')[0].children,
-		i = miu$._GETlog.getIndex(e, 'className', 'CL'),
-		data;
-	e = e[++i].children;
-	e = miu$._CREATEhtml.turnElem(e);
+	const e = (e => {
+			const i = miu$._GETlog.getIndex(e, 'className', 'CL');
+			return miu$._CREATEhtml.turnElem(e[i+1].children);
+		})(doc.getElementsByClassName('AL')[0].children);
 	console.log(e);
 	if(open_Button.textContent === "ログ取得") {
-		open_Button.textContent = "取得中...";
-		data = new miu$._LOGdata.init();
-		if(!data.createC(e)) return false;
-		if(!data.createL(e)) return false;
-		if(!data.createS()) return false;
+		const f = s => {open_Button.textContent = s;},
+			data = new miu$._LOGdata.init();
+		f("取得中...");
+		if(!data.createC(e)) return f("エラー");
+		if(!data.createL(e)) return f("エラー");
+		if(!data.createS()) return f("エラー");
 		console.log(data);
 		miu$._HTMLfunc.mainWindow(top_element, open_Button, data);
-		open_Button.textContent = Scriptname + " " + Version;
+		f(ScriptName + "_" + Version);
 	}
 };
 
-miu$._CREATEhtml.turnElem = function(elem) {
-	var res = [];
-	Array.from(elem).forEach((v) => {
+miu$._CREATEhtml.turnElem = function(e) {
+	const r = [];
+	Array.from(e).forEach(v => {
 		if(v.nodeName === "TABLE") {
-			if(!checkObject(v.getElementsByClassName('B7i')[0], "Undefined")) res.push([]);
-			if(res.length) res[res.length - 1].push(v);
+			if(!checkObject(miu$._GETlog.splitGetNode(v.getElementsByTagName('td'), 'className', '[RGB]7i')[0][0], "Undefined")) r.push([]);
+			if(r.length) r[r.length-1].push(v);
 		}
 		if(v.nodeName === "DIV") {
-			if(res.length) res[res.length - 1].push(v.getElementsByTagName('table')[0]);
+			if(r.length) r[r.length-1].push(v.getElementsByTagName('table')[0]);
 		}
 	});
-	return res;
+	return r;
 };
 
 //////////////////////////////////////////////////////////////
 // start
 //
 
-console.log(miu$);
-miu$._STARTscript = miu$._CREATEhtml.init();
+miu$._CREATEhtml.init();
 
 })();
