@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX_ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.3.0
+// @version      0.3.1
 // @description  ktstのログ抽出スクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -20,7 +20,7 @@
 ※取得していないログ
 	（キャラ）の（スキル）が消滅！
 	離脱メッセージ
-	
+
 ※取得出来ていないログ
 	なにかあれば
 */
@@ -29,7 +29,7 @@
 "use strict";
 const miu$ = {},
 	ScriptName = "SpecterX_ktst",
-	Version = "0.3.0",
+	Version = "0.3.1",
 	doc = document,
 	Bit = 32,
 	checkObject = function(obj, str) {return (Object.prototype.toString.call(obj) === "[object " + str + "]");},
@@ -295,6 +295,9 @@ miu$._DATAstate.stB = function(eno, ptid, mhp, msp) {
 	this["隊列"] = 0;
 	this["変調深度"] = new miu$._DATAstate.hentyo();
 	this["変調防御"] = new miu$._DATAstate.hentyo();
+	this["変調hit"] = new miu$._DATAstate.hentyo();
+	this["変調hit累計"] = new miu$._DATAstate.hentyo();
+	this["変調累計"] = new miu$._DATAstate.hentyo();
 	this.per = new miu$._DATAstate.stB_per();
 	this.state = new miu$._DATAstate.stB_state(mhp, msp);
 	this.stateCount = new miu$._DATAstate.count();
@@ -368,6 +371,10 @@ miu$._DATAstate.hentyo = function() {
 	this["乱"] = 0;
 	this["祝"] = 0;
 	this["護"] = 0;
+};
+
+miu$._DATAstate.hentyo.prototype.Aend_k = function() {
+	["祝", "護"].forEach(v => {if(this[v] > 0) --this[v];});
 };
 
 miu$._DATAstate._update = function(num, add) {
@@ -636,7 +643,7 @@ miu$._GETlog.turnMessageTable.prototype.loginit = function(tElem, tNum) {
 	const tagT = [{"type": "S", "id": "T開始State"}];
 	(btST => {
 		Object.keys(btST).forEach(u => {
-			tagT.push(this.pushResult(btST, u, u, this.listResult(btST, u, u, undefined, undefined, undefined, undefined, "TstartState")));
+			tagT.push(this.pushResult(btST, u, u, this.listResult(btST, undefined, u, undefined, undefined, undefined, undefined, "TstartState")));
 		});
 	})(miu$._GETlog.before_tST(this.tST));
 	tElem.forEach((v,i) => {
@@ -660,8 +667,9 @@ miu$._GETlog.turnMessageTable.prototype.loginit = function(tElem, tNum) {
 			const tagA = {"user": a[1], "nA": parseInt(a[3], 10), "変調深度": hentyo};
 			result[i] = this.checkSkill(v, tagA);
 			this.tST[tagA.user].per.Aend();
+			this.tST[tagA.user]["変調深度"].Aend_k();
 			this.tST[tagA.user].Impact = 0;
-			const tagE = [{"type": "E", "user": tagA.user, "id": "A行動終了時"}, this.pushResult(miu$._GETlog.before_tST(this.tST), tagA.user, tagA.user, this.listResult(this.tST, tagA.user, undefined, undefined, undefined, undefined, undefined, "AturnEnd"))];
+			const tagE = [{"type": "E", "user": tagA.user, "id": "A行動終了時"}, this.pushResult(miu$._GETlog.before_tST(this.tST), tagA.user, tagA.user, this.listResult(this.tST, tagA.user, tagA.user, undefined, undefined, undefined, undefined, "AturnEnd"))];
 			if(result[i][result[i].length-1] === 0) {
 				result[i][result[i].length-1] = tagE;
 			} else {
@@ -699,7 +707,7 @@ miu$._GETlog.turnMessageTable.prototype.checkSkill = function(e, tagA) {
 						this.tST[tagA.user]["変調深度"][v] = tagA["変調深度"][v];
 					});
 				}
-				result[i] = [tagN, this.pushResult(miu$._GETlog.before_tST(this.tST), tagA.user, tagA.user, this.listResult(this.tST, tagA.user, undefined, undefined, undefined, undefined, undefined, "nTag"))];
+				result[i] = [tagN, this.pushResult(miu$._GETlog.before_tST(this.tST), tagA.user, tagA.user, this.listResult(this.tST, tagA.user, tagA.user, undefined, undefined, undefined, undefined, "nTag"))];
 				++i;
 			}
 			result[i] = this["action_" + key](e[i], msg, tagA);
@@ -921,6 +929,7 @@ miu$._GETlog.turnMessageTable.prototype.effect_Hentyo = function(msg, sobj, btST
 				p = Object.keys(reg).find(v => {return reg[v].test(p);});
 				if(p === "抵抗") {
 					a.add = 0;
+					++this.tST[msg.target]["変調hit累計"][a.subkey];
 					return p;
 				}
 				if(p === "奪取") {
@@ -928,6 +937,11 @@ miu$._GETlog.turnMessageTable.prototype.effect_Hentyo = function(msg, sobj, btST
 					this.tST[sobj.user][a.key][a.subkey] = miu$._DATAstate._update(this.tST[sobj.user][a.key][a.subkey], a.add);
 				} else {
 					((key,add) => {
+						if(key === "変調深度") {
+							++this.tST[msg.target]["変調hit"][a.subkey];
+							++this.tST[msg.target]["変調hit累計"][a.subkey];
+							this.tST[msg.target]["変調累計"][a.subkey] = miu$._DATAstate._update(this.tST[msg.target]["変調累計"][a.subkey], add);
+						}
 						this.tST[msg.target][key][a.subkey] = miu$._DATAstate._update(this.tST[msg.target][key][a.subkey], add);
 					})((p === "変調防御") ? p : a.key, (p === "追加") ? a.add : -a.add);
 				}
@@ -1316,6 +1330,18 @@ miu$._HTMLfunc.v_view_takeLog = function(data, key, onlist, viewElem) {
 				"H魅": [1, "魅了"], "H呪": [1, "呪縛"],
 				"H乱": [1, "混乱"], "H精": [1, "精神変調"],
 				"H祝": [1, "祝福"], "H護": [1, "加護"],
+				"毒hit": [1, "被猛毒hit数"], "衰hit": [1, "被衰弱hit数"],
+				"痺hit": [1, "被麻痺hit数"], "肉hit": [1, "被肉体変調hit数"],
+				"魅hit": [1, "被魅了hit数"], "呪hit": [1, "被呪縛hit数"],
+				"乱hit": [1, "被混乱hit数"], "精hit": [1, "被精神変調hit数"],
+				"毒ttl": [1, "被猛毒累計"], "衰ttl": [1, "被衰弱累計"],
+				"痺ttl": [1, "被麻痺累計"], "肉ttl": [1, "被肉体変調累計"],
+				"魅ttl": [1, "被魅了累計"], "呪ttl": [1, "被呪縛累計"],
+				"乱ttl": [1, "被混乱累計"], "精ttl": [1, "被精神変調累計"],
+				"毒th": [1, "被猛毒累計hit数"], "衰th": [1, "被衰弱累計hit数"],
+				"痺th": [1, "被麻痺累計hit数"], "肉th": [1, "被肉体変調累計hit数"],
+				"魅th": [1, "被魅了累計hit数"], "呪th": [1, "被呪縛累計hit数"],
+				"乱th": [1, "被混乱累計hit数"], "精th": [1, "被精神変調累計hit数"],
 				"%AT": [1, "AT+％"], "%MAT": [1, "MAT+％"],
 				"%DF": [1, "DF+％"], "%MDF": [1, "MDF+％"],
 				"%EVA": [1, "EVA+％"], "%MEVA": [1, "MEVA+％"],
@@ -1436,6 +1462,9 @@ miu$._HTMLfunc.v_view_takeLog = function(data, key, onlist, viewElem) {
 									(v => {func.addString(obj, `${n}%AT,${n}%MAT,${n}%DF,${n}%MDF,${n}%EVA,${n}%MEVA,${n}%HIT,${n}%MHIT,${n}%SPD,${n}%CRI,${n}%HEAL`, v.AT[0], v.MAT[0], v.DF[0], v.MDF[0], v.EVA[0], v.MEVA[0], v.HIT[0], v.MHIT[0], v.SPD[0], v.CRI[0], v.HEAL[0]);})(a.per);
 									(v => {func.addString(obj, `${n}stHP,${n}stMHP,${n}stnMHP,${n}stSP,${n}stMSP`, v.HP, v.MHP, v.nMHP, v.SP, v.MSP);})(a.state);
 									(v => {func.addString(obj, `${n}H毒,${n}H衰,${n}H痺,${n}H魅,${n}H呪,${n}H乱,${n}H祝,${n}H護,${n}H肉,${n}H精`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["祝"], v["護"], v["毒"]+v["衰"]+v["痺"], v["魅"]+v["呪"]+v["乱"]);})(a["変調深度"]);
+									(v => {func.addString(obj, `${n}毒hit,${n}衰hit,${n}痺hit,${n}魅hit,${n}呪hit,${n}乱hit,${n}肉hit,${n}精hit`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["毒"]+v["衰"]+v["痺"], v["魅"]+v["呪"]+v["乱"]);})(a["変調hit"]);
+									(v => {func.addString(obj, `${n}毒ttl,${n}衰ttl,${n}痺ttl,${n}魅ttl,${n}呪ttl,${n}乱ttl,${n}肉ttl,${n}精ttl`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["毒"]+v["衰"]+v["痺"], v["魅"]+v["呪"]+v["乱"]);})(a["変調累計"]);
+									(v => {func.addString(obj, `${n}毒th,${n}衰th,${n}痺th,${n}魅th,${n}呪th,${n}乱th,${n}肉th,${n}精th`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["毒"]+v["衰"]+v["痺"], v["魅"]+v["呪"]+v["乱"]);})(a["変調hit累計"]);
 								});
 							}
 							func.addSyntax(Object.keys(obj).map(k => {return (obj[k] === true) ? undefined : obj[k];}).join(","));
