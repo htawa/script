@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         specterX_ktst
 // @namespace    miu$_specterX_ktst
-// @version      0.3.1
+// @version      0.3.2
 // @description  ktstのログ抽出スクリプト。
 // @author       ssz
 // @match        http://lisge.com/kk/k/*
@@ -29,7 +29,7 @@
 "use strict";
 const miu$ = {},
 	ScriptName = "SpecterX_ktst",
-	Version = "0.3.1",
+	Version = "0.3.2",
 	doc = document,
 	Bit = 32,
 	checkObject = function(obj, str) {return (Object.prototype.toString.call(obj) === "[object " + str + "]");},
@@ -1399,7 +1399,7 @@ miu$._HTMLfunc.v_view_takeLog = function(data, key, onlist, viewElem) {
 				els.rText.value = (syn => {
 					let csv = "";
 					const obj = {}, func = {};
-					func.addSyntax = (v) => {csv += v + "\n";};
+					func.addSyntax = v => {csv += v + "\n";};
 					func.addString = function(o,k) {k.split(/,/).forEach((k,i) => {if(syn[k]) o[k] = arguments[i+2];});};
 					func.checkSyntax = array => {
 						const len = array.length;
@@ -1467,7 +1467,7 @@ miu$._HTMLfunc.v_view_takeLog = function(data, key, onlist, viewElem) {
 									(v => {func.addString(obj, `${n}毒th,${n}衰th,${n}痺th,${n}魅th,${n}呪th,${n}乱th,${n}肉th,${n}精th`, v["毒"], v["衰"], v["痺"], v["魅"], v["呪"], v["乱"], v["毒"]+v["衰"]+v["痺"], v["魅"]+v["呪"]+v["乱"]);})(a["変調hit累計"]);
 								});
 							}
-							func.addSyntax(Object.keys(obj).map(k => {return (obj[k] === true) ? undefined : obj[k];}).join(","));
+							func.addSyntax(Object.keys(syn).map(k => {return (obj[k] === true) ? undefined : obj[k];}).join(","));
 						}
 					};
 					if(func.checkSyntax(syn.split(/,/))) {
